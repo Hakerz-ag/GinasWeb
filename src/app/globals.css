@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Green/Yellow Tennis Theme */
+  --green-900: #1a3a1a;
+  --green-800: #2d5a2d;
+  --green-700: #3d7a3d;
+  --green-600: #4a9e4a;
+  --green-500: #5cb85c;
+  --green-400: #7ed67e;
+  --green-300: #a8e6a8;
+  --green-200: #d4f5d4;
+  --green-100: #eaf7ea;
+  --green-50: #f5fbf5;
+
+  --yellow-900: #7a6200;
+  --yellow-800: #a07d00;
+  --yellow-700: #c49a00;
+  --yellow-600: #d4a800;
+  --yellow-500: #e6b800;
+  --yellow-400: #f0c830;
+  --yellow-300: #f5d860;
+  --yellow-200: #fae890;
+  --yellow-100: #fdf5d0;
+  --yellow-50: #fefbe8;
+
+  --ink: #1a1a1a;
+  --body: #333333;
+  --muted: #6a6a6a;
+  --muted-soft: #929292;
+  --hairline: #e0e0e0;
+  --hairline-soft: #f0f0f0;
+  --canvas: #ffffff;
+  --surface-soft: #f8faf8;
+  --surface-card: #ffffff;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-white text-gray-900 antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98];
+  }
+  .btn-secondary {
+    @apply bg-white hover:bg-green-50 text-green-700 font-semibold py-3 px-6 rounded-xl border-2 border-green-600 transition-all duration-200 active:scale-[0.98];
+  }
+  .btn-yellow {
+    @apply bg-yellow-500 hover:bg-yellow-600 text-green-900 font-bold py-3 px-6 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98];
+  }
+  .card {
+    @apply bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-shadow hover:shadow-md;
+  }
+  .section-heading {
+    @apply text-3xl md:text-4xl font-bold text-green-900;
+  }
+  .section-subheading {
+    @apply text-lg text-gray-600 mt-2;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--green-400);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--green-600);
+}

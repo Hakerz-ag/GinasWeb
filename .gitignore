@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+*.pem
+*.key
+private_key*
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+.next/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Docker
+docker-compose.override.yml
+
+# Testing
+coverage/
+.pytest_cache/
+playwright-report/
+
+# Python
+backend/.env
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
