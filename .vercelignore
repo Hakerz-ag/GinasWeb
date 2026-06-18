@@ -1,0 +1,5 @@
+backend/
+.next/
+node_modules/
+*.mp4
+public/videos/*.mp4
