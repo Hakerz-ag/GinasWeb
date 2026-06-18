@@ -11,8 +11,13 @@ export default function ChatWidget() {
   const [chatSent, setChatSent] = useState(false);
   const [chatSending, setChatSending] = useState(false);
 
+  const isValidEmail = (email: string) => {
+    return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email.trim());
+  };
+
   const handleSend = async () => {
-    if (!chatName || !chatEmail || !chatMessage) return;
+    if (!chatName.trim() || !chatEmail.trim() || !chatMessage.trim()) return;
+    if (!isValidEmail(chatEmail)) return;
     setChatSending(true);
     try {
       await fetch('/api/chat-messages', {
@@ -58,12 +63,15 @@ export default function ChatWidget() {
             <div className="p-4 space-y-3">
               <p className="text-gray-600 text-xs">To prevent spam, please provide your name and email before messaging.</p>
               <input type="text" placeholder="Your Name" value={chatName} onChange={e => setChatName(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-green-500 focus:outline-none" />
-              <input type="email" placeholder="Your Email" value={chatEmail} onChange={e => setChatEmail(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-green-500 focus:outline-none" />
+              <input type="email" placeholder="Your Email" value={chatEmail} onChange={e => setChatEmail(e.target.value)} className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none ${chatEmail && !isValidEmail(chatEmail) ? 'border-red-400 focus:border-red-500 bg-red-50' : 'border-gray-200 focus:border-green-500'}`} />
+              {chatEmail && !isValidEmail(chatEmail) && (
+                <p className="text-red-500 text-xs mt-1">Please enter a valid email address</p>
+              )}
               <textarea placeholder="Your message..." value={chatMessage} onChange={e => setChatMessage(e.target.value)} rows={3} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-green-500 focus:outline-none resize-none" />
               <button
                 onClick={handleSend}
-                disabled={!chatName || !chatEmail || !chatMessage || chatSending}
-                className={`w-full py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors ${(!chatName || !chatEmail || !chatMessage || chatSending) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!chatName.trim() || !chatEmail.trim() || !chatMessage.trim() || !isValidEmail(chatEmail) || chatSending}
+                className={`w-full py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors ${(!chatName.trim() || !chatEmail.trim() || !chatMessage.trim() || !isValidEmail(chatEmail) || chatSending) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {chatSending ? 'Sending...' : 'Send Message'}
               </button>

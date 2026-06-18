@@ -39,6 +39,9 @@ export default function BookCourtPage() {
   const [ballMachine, setBallMachine] = useState(false);
   const [assessmentNotes, setAssessmentNotes] = useState('');
 
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const handleAssessmentSubmit = async () => {
     if (!isAuthenticated || !user) return;
     try {
@@ -46,7 +49,7 @@ export default function BookCourtPage() {
         user_id: user.id,
         date: selectedDate,
         start_time: selectedTime,
-        end_time: selectedTime, // Will be 1 hour by default
+        end_time: selectedTime,
       });
       setSubmitted(true);
     } catch (err) {
@@ -54,8 +57,42 @@ export default function BookCourtPage() {
     }
   };
 
-  const handleSubmit = () => {
-    setSubmitted(true);
+  const handleSubmit = async () => {
+    if (!isAuthenticated || !user) {
+      setSubmitError('Please sign in to book a court.');
+      return;
+    }
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      // Calculate end time based on duration
+      const startHour = parseInt(selectedTime.split(':')[0]);
+      const startMin = selectedTime.includes('30') ? 30 : 0;
+      const isPM = selectedTime.includes('PM');
+      const durationHours = parseFloat(selectedDuration);
+      let endHour = startHour + Math.floor(durationHours);
+      let endMin = startMin + (durationHours % 1) * 60;
+      if (endMin >= 60) { endHour += 1; endMin -= 60; }
+      const endTime = `${endHour}:${endMin === 0 ? '00' : endMin.toString().padStart(2, '0')} ${isPM ? 'PM' : 'AM'}`;
+
+      await api.createBooking({
+        user_id: user.id,
+        court_number: selectedCourt || 1,
+        date: selectedDate,
+        start_time: selectedTime,
+        end_time: endTime,
+        contract_type: contractOptions[contractType].weeks === 30 ? '30-week' : contractOptions[contractType].weeks === 15 ? '15-week' : 'open-single',
+        ball_machine: ballMachine,
+        party_size: parseInt(partySize) || 2,
+        notes: notes,
+      });
+      setSubmitted(true);
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail || 'Failed to submit booking. Please try again.';
+      setSubmitError(detail);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -128,6 +165,17 @@ export default function BookCourtPage() {
       {/* Booking Form */}
       <section className="bg-green-50 py-12 md:py-16">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Login prompt for unauthenticated users */}
+          {!isAuthenticated && (
+            <div className="mb-8 bg-yellow-50 border border-yellow-200 rounded-2xl p-6 text-center">
+              <h3 className="font-bold text-yellow-800 text-lg mb-2">Sign In Required</h3>
+              <p className="text-yellow-700 text-sm mb-4">You need to be signed in to book a court or assessment.</p>
+              <div className="flex justify-center gap-3">
+                <a href="/login" className="btn-primary">Sign In</a>
+                <a href="/register" className="btn-secondary">Create Account</a>
+              </div>
+            </div>
+          )}
           {/* Booking Type Selection */}
           {step === 1 && (
             <div className="mb-8">
@@ -538,9 +586,12 @@ export default function BookCourtPage() {
                   <button onClick={() => setStep(2)} className="btn-secondary">
                     Back
                   </button>
-                  <button onClick={handleSubmit} className="btn-yellow">
-                    Submit Booking Request
+                  <button onClick={handleSubmit} disabled={submitting} className={`btn-yellow ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    {submitting ? 'Submitting...' : 'Submit Booking Request'}
                   </button>
+                  {submitError && (
+                    <p className="text-red-500 text-sm mt-2 text-center">{submitError}</p>
+                  )}
                 </div>
               </div>
             )}

@@ -3,7 +3,7 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from app.models import User, SubAccount, ClassSession, CourtBooking, OpenTime
+from app.models import User, SubAccount, ClassSession, CourtBooking, OpenTime, Notification, Payment
 from app.services.auth import hash_password
 
 
@@ -82,6 +82,25 @@ def seed_db(db: Session):
         OpenTime(id="ot-3", day="Friday", time="8:00 PM", court="1", status="booked"),
     ]
     db.add_all(open_times_data)
+
+    # ── Notifications ─────────────────────────────────────────────────────
+    notifications_data = [
+        Notification(id="notif-1", user_id="cust-1", type="booking", title="Booking Confirmed", message="Your court booking for June 5th has been approved!", action_url="/customer", related_id="bk-1", read=True, created_at=datetime(2026, 5, 21)),
+        Notification(id="notif-2", user_id="admin-1", type="booking", title="New Booking Request", message="John Smith requested a court booking for June 7th.", action_url="/admin", related_id="bk-2", read=False, created_at=datetime(2026, 5, 22)),
+        Notification(id="notif-3", user_id="admin-1", type="enrollment", title="New Enrollment", message="A new student wants to join Adult Intermediate Clinic.", action_url="/admin", related_id="cls-2", read=False, created_at=datetime(2026, 5, 23)),
+        Notification(id="notif-4", user_id="cust-1", type="system", title="Welcome to Gina's Tennis World!", message="Your account has been approved. You can now book classes and courts.", action_url="/classes", read=True, created_at=datetime(2025, 9, 16)),
+    ]
+    db.add_all(notifications_data)
+
+    # ── Payments ─────────────────────────────────────────────────────────
+    payments_data = [
+        Payment(id="pay-1", user_id="cust-1", amount=35.00, currency="usd", status="completed", payment_type="class", payment_method="stripe", related_id="cls-2", description="Adult Intermediate Clinic - Monthly", created_at=datetime(2026, 5, 1)),
+        Payment(id="pay-2", user_id="cust-1", amount=45.00, currency="usd", status="completed", payment_type="booking", payment_method="cash", related_id="bk-1", description="Court Rental - Birthday Party", admin_notes="Cash received at front desk", created_at=datetime(2026, 5, 20)),
+        Payment(id="pay-3", user_id="cust-2", amount=35.00, currency="usd", status="pending", payment_type="class", payment_method="venmo", related_id="cls-5", description="Adult Beginners Clinic", created_at=datetime(2026, 5, 22)),
+        Payment(id="pay-4", user_id="cust-4", amount=50.00, currency="usd", status="pending", payment_type="class", payment_method="check", related_id="cls-7", description="Adult Power & Conditioning", admin_notes="Check #5678 promised for next week", created_at=datetime(2026, 6, 1)),
+        Payment(id="pay-5", user_id="cust-5", amount=30.00, currency="usd", status="pending", payment_type="class", payment_method="pay_at_location", related_id="cls-6", description="Junior Ball Machine Clinic", created_at=datetime(2026, 6, 5)),
+    ]
+    db.add_all(payments_data)
 
     db.commit()
     print("✅ Database seeded with demo data.")

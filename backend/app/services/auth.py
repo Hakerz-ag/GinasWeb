@@ -30,7 +30,7 @@ def create_token(user_id: str, role: str) -> str:
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-def decode_token(token: str) -> dict | None:
+def decode_token(token: str) -> "dict | None":
     """Decode and verify a JWT token. Returns payload or None if invalid."""
     try:
         return jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])

@@ -3,7 +3,7 @@
 import LayoutShell from '@/components/LayoutShell';
 import { api, ClassOut } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { Calendar, Clock, Users, DollarSign, ChevronRight, Filter, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, Users, DollarSign, ChevronRight, Filter, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
@@ -12,6 +12,10 @@ export default function ClassesPage() {
   const [levelFilter, setLevelFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [classes, setClasses] = useState<ClassOut[]>([]);
+  const [enrollingClassId, setEnrollingClassId] = useState<string | null>(null);
+  const [enrolledClassIds, setEnrolledClassIds] = useState<Set<string>>(new Set());
+  const [enrollError, setEnrollError] = useState<string | null>(null);
+  const [enrollSuccess, setEnrollSuccess] = useState<string | null>(null);
 
   // Determine if user has completed assessment and their skill level
   const assessmentCompleted = user?.assessment_completed ?? false;
@@ -20,6 +24,45 @@ export default function ClassesPage() {
   useEffect(() => {
     api.getClasses().then((res) => setClasses(res.data)).catch(() => {});
   }, []);
+
+  // Fetch user's existing enrollments if logged in
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      api.getUsers().then((res) => {
+        const currentUser = res.data.find((u) => u.id === user.id);
+        if (currentUser && currentUser.classes) {
+          setEnrolledClassIds(new Set(currentUser.classes));
+        }
+      }).catch(() => {});
+    }
+  }, [isAuthenticated, user]);
+
+  const handleEnroll = async (classId: string) => {
+    if (!isAuthenticated || !user) return;
+    setEnrollingClassId(classId);
+    setEnrollError(null);
+    setEnrollSuccess(null);
+    try {
+      await api.enrollInClass(user.id, classId);
+      setEnrolledClassIds((prev) => {
+        const next = new Set(prev);
+        next.add(classId);
+        return next;
+      });
+      setEnrollSuccess(classId);
+      // Update current_students count locally
+      setClasses((prev) =>
+        prev.map((c) =>
+          c.id === classId ? { ...c, current_students: c.current_students + 1 } : c
+        )
+      );
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail || 'Failed to enroll. Please try again.';
+      setEnrollError(detail);
+    } finally {
+      setEnrollingClassId(null);
+    }
+  };
 
   // Filter classes: if user is logged in and has a skill level, only show matching levels
   const filtered = classes.filter((cls) => {
@@ -64,6 +107,23 @@ export default function ClassesPage() {
                     Book your assessment →
                   </Link>
                 </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Login prompt for unauthenticated users */}
+      {!isAuthenticated && (
+        <section className="bg-blue-50 border-b border-blue-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-blue-800">
+                <strong>Sign in</strong> to join classes and book assessments.
+              </p>
+              <div className="flex gap-2">
+                <Link href="/login" className="btn-primary text-sm py-1.5 px-4">Sign In</Link>
+                <Link href="/register" className="btn-secondary text-sm py-1.5 px-4">Create Account</Link>
               </div>
             </div>
           </div>
@@ -183,17 +243,44 @@ export default function ClassesPage() {
                         }}
                       />
                     </div>
-                    <Link
-                      href={isAuthenticated && assessmentCompleted ? '/customer' : '/login'}
-                      className={`btn-primary w-full text-center block mt-4 ${isAuthenticated && !assessmentCompleted ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      {!isAuthenticated
-                        ? 'Sign In to Join'
-                        : !assessmentCompleted
-                        ? 'Assessment Required'
-                        : 'Join This Class'}
-                      <ChevronRight className="w-4 h-4 inline ml-1" />
-                    </Link>
+                    {/* Enrollment button */}
+                    {enrollSuccess === cls.id ? (
+                      <div className="btn-primary w-full text-center mt-4 bg-green-600 flex items-center justify-center gap-2">
+                        <CheckCircle className="w-4 h-4" /> Enrolled!
+                      </div>
+                    ) : enrolledClassIds.has(cls.id) ? (
+                      <div className="w-full text-center mt-4 px-4 py-2 bg-green-100 text-green-700 rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
+                        <CheckCircle className="w-4 h-4" /> Already Enrolled
+                      </div>
+                    ) : !isAuthenticated ? (
+                      <Link
+                        href="/login"
+                        className="btn-primary w-full text-center block mt-4"
+                      >
+                        Sign In to Join
+                        <ChevronRight className="w-4 h-4 inline ml-1" />
+                      </Link>
+                    ) : !assessmentCompleted ? (
+                      <Link
+                        href="/book"
+                        className="btn-primary w-full text-center block mt-4 opacity-75"
+                      >
+                        Assessment Required
+                        <ChevronRight className="w-4 h-4 inline ml-1" />
+                      </Link>
+                    ) : (
+                      <button
+                        onClick={() => handleEnroll(cls.id)}
+                        disabled={enrollingClassId === cls.id}
+                        className={`btn-primary w-full text-center mt-4 ${enrollingClassId === cls.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        {enrollingClassId === cls.id ? 'Enrolling...' : 'Join This Class'}
+                        {enrollingClassId !== cls.id && <ChevronRight className="w-4 h-4 inline ml-1" />}
+                      </button>
+                    )}
+                    {enrollError && enrollError && (
+                      <p className="text-red-500 text-xs mt-2 text-center">{enrollError}</p>
+                    )}
                   </div>
                 </div>
               ))}

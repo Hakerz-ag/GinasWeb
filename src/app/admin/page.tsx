@@ -22,6 +22,8 @@ import {
   Send,
   Ban,
   MessageCircle,
+  MapPin,
+  FileText,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -39,13 +41,14 @@ const timeSlots = ['4:00 PM', '4:30 PM', '5:00 PM', '5:30 PM', '6:00 PM', '6:30 
 export default function AdminDashboard() {
   const { user, isAuthenticated, loading, justLoggedOut } = useAuth();
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState<'overview' | 'users' | 'schedule' | 'email' | 'opentimes' | 'scheduleblocks' | 'messages'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'users' | 'schedule' | 'bookings' | 'email' | 'opentimes' | 'scheduleblocks' | 'messages'>('overview');
   const [users, setUsers] = useState<UserOut[]>([]);
   const [classes, setClasses] = useState<ClassOut[]>([]);
   const [openTimes, setOpenTimes] = useState<OpenTimeOut[]>([]);
   const [assessments, setAssessments] = useState<AssessmentOut[]>([]);
   const [scheduleBlocks, setScheduleBlocks] = useState<ScheduleBlockOut[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessageOut[]>([]);
+  const [allBookings, setAllBookings] = useState<any[]>([]);
   const [showAddUser, setShowAddUser] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserOut | null>(null);
   const [selectedSubAccount, setSelectedSubAccount] = useState<{ id: string; name: string; parentUser: UserOut } | null>(null);
@@ -71,13 +74,14 @@ export default function AdminDashboard() {
 
     const fetchData = async () => {
       try {
-        const [usersRes, classesRes, openTimesRes, assessmentsRes, blocksRes, messagesRes] = await Promise.all([
+        const [usersRes, classesRes, openTimesRes, assessmentsRes, blocksRes, messagesRes, bookingsRes] = await Promise.all([
           api.getUsers(),
           api.getClasses(),
           api.getOpenTimes(),
           api.getAssessments(),
           api.getScheduleBlocks(),
           api.getChatMessages(),
+          api.getBookings(),
         ]);
         setUsers(usersRes.data);
         setClasses(classesRes.data);
@@ -85,6 +89,7 @@ export default function AdminDashboard() {
         setAssessments(assessmentsRes.data);
         setScheduleBlocks(blocksRes.data);
         setChatMessages(messagesRes.data);
+        setAllBookings(bookingsRes.data);
       } catch (err) {
         console.error('Failed to fetch admin data:', err);
       }
@@ -386,6 +391,7 @@ export default function AdminDashboard() {
               { key: 'overview' as const, label: 'Overview', icon: BarChart3 },
               { key: 'users' as const, label: 'Users', icon: UserPlus },
               { key: 'schedule' as const, label: 'Schedule', icon: Calendar },
+              { key: 'bookings' as const, label: 'Bookings', icon: MapPin },
               { key: 'email' as const, label: 'Email', icon: Mail },
               { key: 'opentimes' as const, label: 'Open Times', icon: Clock },
               { key: 'scheduleblocks' as const, label: 'Blocks', icon: Ban },
@@ -584,6 +590,247 @@ export default function AdminDashboard() {
                   </form>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ── Bookings ────────────────────────────────────────────────────── */}
+          {activeSection === 'bookings' && (
+            <div>
+              <h2 className="text-xl font-bold text-green-900 mb-6 flex items-center gap-2"><MapPin className="w-5 h-5 text-yellow-500" /> Court Bookings & Applications</h2>
+              <p className="text-gray-600 text-sm mb-6">All court booking requests, including 30-week contract applications. Approve or deny pending bookings.</p>
+
+              {/* Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                {[
+                  { label: 'Total Bookings', value: allBookings.length, color: 'bg-blue-100 text-blue-700' },
+                  { label: '30-Week Contracts', value: allBookings.filter(b => b.contract_type === '30-week').length, color: 'bg-green-100 text-green-700' },
+                  { label: 'Pending Approval', value: allBookings.filter(b => b.status === 'pending').length, color: 'bg-yellow-100 text-yellow-700' },
+                  { label: 'Approved', value: allBookings.filter(b => b.status === 'approved').length, color: 'bg-emerald-100 text-emerald-700' },
+                ].map(stat => (
+                  <div key={stat.label} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <p className="text-2xl font-bold text-green-900">{stat.value}</p>
+                    <p className="text-xs text-gray-500">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* 30-Week Contracts Section */}
+              {allBookings.filter(b => b.contract_type === '30-week').length > 0 && (
+                <div className="mb-8">
+                  <h3 className="font-bold text-green-900 mb-4 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-green-600" />
+                    30-Week Contract Applications
+                  </h3>
+                  <div className="space-y-3">
+                    {allBookings
+                      .filter(b => b.contract_type === '30-week')
+                      .sort((a, b) => {
+                        const statusOrder: Record<string, number> = { pending: 0, approved: 1, denied: 2, completed: 3 };
+                        return (statusOrder[a.status] ?? 4) - (statusOrder[b.status] ?? 4);
+                      })
+                      .map(booking => {
+                        const bookingUser = users.find(u => u.id === booking.user_id);
+                        return (
+                          <div key={booking.id} className={`bg-white rounded-xl p-5 shadow-sm border-l-4 ${
+                            booking.status === 'pending' ? 'border-l-yellow-500' :
+                            booking.status === 'approved' ? 'border-l-green-500' :
+                            booking.status === 'denied' ? 'border-l-red-500' :
+                            'border-l-blue-500'
+                          }`}>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-bold text-green-900">Court {booking.court_number}</span>
+                                  <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${
+                                    booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                    booking.status === 'approved' ? 'bg-green-100 text-green-700' :
+                                    booking.status === 'denied' ? 'bg-red-100 text-red-700' :
+                                    'bg-blue-100 text-blue-700'
+                                  }`}>
+                                    {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                                  </span>
+                                  <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-green-100 text-green-700">30-Week Contract</span>
+                                </div>
+                                <p className="text-sm text-gray-600">
+                                  {booking.date} • {booking.start_time} – {booking.end_time}
+                                </p>
+                                {bookingUser && (
+                                  <p className="text-sm text-gray-500 mt-1">
+                                    👤 {bookingUser.name} ({bookingUser.email})
+                                    {booking.party_size && ` • Party of ${booking.party_size}`}
+                                  </p>
+                                )}
+                                {booking.notes && (
+                                  <p className="text-xs text-gray-400 mt-1 italic">"{booking.notes}"</p>
+                                )}
+                                {booking.ball_machine && (
+                                  <span className="inline-block mt-1 px-2 py-0.5 text-xs font-bold rounded-full bg-yellow-50 text-yellow-700">🎾 Ball Machine</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {booking.status === 'pending' && (
+                                  <>
+                                    <button onClick={async () => {
+                                      try {
+                                        await api.updateBooking(booking.id, { status: 'approved' });
+                                        setAllBookings(allBookings.map(b => b.id === booking.id ? { ...b, status: 'approved' } : b));
+                                      } catch (err) { console.error(err); }
+                                    }} className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-200 font-semibold">Approve</button>
+                                    <button onClick={async () => {
+                                      try {
+                                        await api.updateBooking(booking.id, { status: 'denied' });
+                                        setAllBookings(allBookings.map(b => b.id === booking.id ? { ...b, status: 'denied' } : b));
+                                      } catch (err) { console.error(err); }
+                                    }} className="text-xs bg-red-100 text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-200 font-semibold">Deny</button>
+                                  </>
+                                )}
+                                <button onClick={async () => {
+                                  if (confirm('Delete this booking?')) {
+                                    try { await api.deleteBooking(booking.id); setAllBookings(allBookings.filter(b => b.id !== booking.id)); } catch (err) { console.error(err); }
+                                  }
+                                }} className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-200"><Trash2 className="w-3 h-3 inline" /></button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
+              {/* All Other Bookings */}
+              <h3 className="font-bold text-green-900 mb-4">All Bookings</h3>
+              {allBookings.length === 0 ? (
+                <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-100 text-center">
+                  <MapPin className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500 text-sm">No bookings yet.</p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-green-50">
+                      <tr>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-green-800 uppercase">Customer</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-green-800 uppercase">Court</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-green-800 uppercase">Date</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-green-800 uppercase">Time</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-green-800 uppercase">Contract</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-green-800 uppercase">Status</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-green-800 uppercase">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {allBookings
+                        .sort((a, b) => {
+                          const statusOrder: Record<string, number> = { pending: 0, approved: 1, denied: 2, completed: 3 };
+                          return (statusOrder[a.status] ?? 4) - (statusOrder[b.status] ?? 4);
+                        })
+                        .map(booking => {
+                        const bookingUser = users.find(u => u.id === booking.user_id);
+                        return (
+                          <tr key={booking.id} className="hover:bg-green-50/50">
+                            <td className="px-4 py-3 text-sm font-medium text-green-900">
+                              {bookingUser?.name || 'Unknown'}
+                              <p className="text-xs text-gray-400">{bookingUser?.email}</p>
+                            </td>
+                            <td className="px-4 py-3 text-sm">Court {booking.court_number}</td>
+                            <td className="px-4 py-3 text-sm">{booking.date}</td>
+                            <td className="px-4 py-3 text-sm">{booking.start_time} – {booking.end_time}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${
+                                booking.contract_type === '30-week' ? 'bg-green-100 text-green-700' :
+                                booking.contract_type === '15-week' ? 'bg-blue-100 text-blue-700' :
+                                'bg-gray-100 text-gray-700'
+                              }`}>
+                                {booking.contract_type === '30-week' ? '30-Week' :
+                                 booking.contract_type === '15-week' ? '15-Week' :
+                                 booking.contract_type || 'Single'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${
+                                booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                booking.status === 'approved' ? 'bg-green-100 text-green-700' :
+                                booking.status === 'denied' ? 'bg-red-100 text-red-700' :
+                                'bg-blue-100 text-blue-700'
+                              }`}>
+                                {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1">
+                                {booking.status === 'pending' && (
+                                  <>
+                                    <button onClick={async () => {
+                                      try {
+                                        await api.updateBooking(booking.id, { status: 'approved' });
+                                        setAllBookings(allBookings.map(b => b.id === booking.id ? { ...b, status: 'approved' } : b));
+                                      } catch (err) { console.error(err); }
+                                    }} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200">✓</button>
+                                    <button onClick={async () => {
+                                      try {
+                                        await api.updateBooking(booking.id, { status: 'denied' });
+                                        setAllBookings(allBookings.map(b => b.id === booking.id ? { ...b, status: 'denied' } : b));
+                                      } catch (err) { console.error(err); }
+                                    }} className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200">✗</button>
+                                  </>
+                                )}
+                                <button onClick={async () => {
+                                  if (confirm('Delete this booking?')) {
+                                    try { await api.deleteBooking(booking.id); setAllBookings(allBookings.filter(b => b.id !== booking.id)); } catch (err) { console.error(err); }
+                                  }
+                                }} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200"><Trash2 className="w-3 h-3" /></button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Class Enrollments */}
+              <h3 className="font-bold text-green-900 mt-8 mb-4 flex items-center gap-2"><Calendar className="w-5 h-5 text-blue-500" /> Class Enrollments</h3>
+              <p className="text-gray-600 text-sm mb-4">Students enrolled in classes. Shows which classes each student is signed up for.</p>
+              {users.filter(u => u.role === 'customer' && u.classes && u.classes.length > 0).length === 0 ? (
+                <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-100 text-center">
+                  <Calendar className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500 text-sm">No class enrollments yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {users
+                    .filter(u => u.role === 'customer' && u.classes && u.classes.length > 0)
+                    .map(u => (
+                      <div key={u.id} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white font-bold">{u.name.charAt(0)}</div>
+                            <div>
+                              <p className="font-semibold text-green-900">{u.name}</p>
+                              <p className="text-xs text-gray-500">{u.email}</p>
+                            </div>
+                          </div>
+                          <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${u.assessment_completed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                            {u.assessment_completed ? '✓ Assessed' : '⚠ Pending'}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {u.classes.map((cls, idx) => {
+                            const classData = classes.find(c => c.title === cls);
+                            return (
+                              <span key={idx} className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg">
+                                {cls}
+                                {classData && <span className="text-blue-400 ml-1">({classData.day_of_week} {classData.start_time})</span>}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           )}
 

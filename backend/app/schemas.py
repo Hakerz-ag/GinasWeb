@@ -298,3 +298,134 @@ class ChatMessageCreate(BaseModel):
     name: str
     email: str
     message: str
+
+
+# ── Notifications ────────────────────────────────────────────────────────────
+
+class NotificationOut(BaseModel):
+    id: str
+    user_id: str
+    type: str          # "booking", "enrollment", "assessment", "payment", "system"
+    title: str
+    message: str
+    read: bool = False
+    action_url: str = ""
+    related_id: str = ""
+    created_at: Optional[datetime] = None
+
+
+class NotificationCreate(BaseModel):
+    user_id: str
+    type: str
+    title: str
+    message: str
+    action_url: str = ""
+    related_id: str = ""
+
+
+class NotificationUpdate(BaseModel):
+    read: Optional[bool] = None
+
+
+# ── Payments ─────────────────────────────────────────────────────────────────
+
+# ── Payment Methods ─────────────────────────────────────────────────────────
+# These are the supported payment methods. Gina can accept any combination.
+PAYMENT_METHOD_STRIPE = "stripe"
+PAYMENT_METHOD_CASH = "cash"
+PAYMENT_METHOD_CHECK = "check"
+PAYMENT_METHOD_VENMO = "venmo"
+PAYMENT_METHOD_ZELLE = "zelle"
+PAYMENT_METHOD_PAY_AT_LOCATION = "pay_at_location"
+
+ALL_PAYMENT_METHODS = [
+    PAYMENT_METHOD_STRIPE,
+    PAYMENT_METHOD_CASH,
+    PAYMENT_METHOD_CHECK,
+    PAYMENT_METHOD_VENMO,
+    PAYMENT_METHOD_ZELLE,
+    PAYMENT_METHOD_PAY_AT_LOCATION,
+]
+
+# Human-readable labels for the frontend
+PAYMENT_METHOD_LABELS = {
+    PAYMENT_METHOD_STRIPE: "Credit/Debit Card (Stripe)",
+    PAYMENT_METHOD_CASH: "Cash",
+    PAYMENT_METHOD_CHECK: "Check",
+    PAYMENT_METHOD_VENMO: "Venmo",
+    PAYMENT_METHOD_ZELLE: "Zelle",
+    PAYMENT_METHOD_PAY_AT_LOCATION: "Pay at Location",
+}
+
+
+class PaymentOut(BaseModel):
+    id: str
+    user_id: str
+    amount: float
+    currency: str = "usd"
+    status: str = "pending"       # "pending", "completed", "failed", "refunded"
+    payment_type: str             # "class", "booking", "assessment"
+    payment_method: str = "stripe"  # "stripe", "cash", "check", "venmo", "zelle", "pay_at_location"
+    related_id: str = ""
+    stripe_payment_intent_id: str = ""
+    stripe_checkout_session_id: str = ""
+    description: str = ""
+    admin_notes: str = ""
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class PaymentCreate(BaseModel):
+    user_id: str
+    amount: float
+    payment_type: str   # "class", "booking", "assessment"
+    payment_method: str = PAYMENT_METHOD_STRIPE  # defaults to stripe, can be any method
+    related_id: str = ""
+    description: str = ""
+
+
+class PaymentUpdate(BaseModel):
+    status: Optional[str] = None
+    payment_method: Optional[str] = None
+    stripe_payment_intent_id: Optional[str] = None
+    stripe_checkout_session_id: Optional[str] = None
+    admin_notes: Optional[str] = None
+
+
+class PaymentMethodConfig(BaseModel):
+    """Configuration for which payment methods Gina accepts."""
+    enabled_methods: list[str] = [PAYMENT_METHOD_STRIPE]
+    stripe_enabled: bool = True
+    cash_enabled: bool = True
+    check_enabled: bool = True
+    venmo_enabled: bool = True
+    zelle_enabled: bool = True
+    pay_at_location_enabled: bool = True
+    venmo_handle: str = ""   # e.g. "@Gina-Tennis"
+    zelle_info: str = ""     # e.g. "ginas@tennis.com"
+
+
+# ── Password Reset ───────────────────────────────────────────────────────────
+
+class PasswordResetRequest(BaseModel):
+    email: str
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
+
+
+# ── Dashboard Stats (for admin dashboard) ────────────────────────────────────
+
+class DashboardStats(BaseModel):
+    total_customers: int
+    active_customers: int
+    pending_customers: int
+    total_bookings: int
+    pending_bookings: int
+    total_enrollments: int
+    active_classes: int
+    total_revenue: float
+    unread_messages: int
+    recent_signups: int

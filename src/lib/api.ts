@@ -145,6 +145,69 @@ export interface ChatMessageOut {
   created_at: string | null;
 }
 
+export interface NotificationOut {
+  id: string;
+  user_id: string;
+  type: string;       // "booking", "enrollment", "assessment", "payment", "system"
+  title: string;
+  message: string;
+  read: boolean;
+  action_url: string;
+  related_id: string;
+  created_at: string | null;
+}
+
+export interface PaymentOut {
+  id: string;
+  user_id: string;
+  amount: number;
+  currency: string;
+  status: string;     // "pending", "completed", "failed", "refunded"
+  payment_type: string; // "class", "booking", "assessment"
+  payment_method: string; // "stripe", "cash", "check", "venmo", "zelle", "pay_at_location"
+  related_id: string;
+  stripe_payment_intent_id: string;
+  stripe_checkout_session_id: string;
+  description: string;
+  admin_notes: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface PaymentMethodOption {
+  id: string;       // "stripe", "cash", "check", "venmo", "zelle", "pay_at_location"
+  label: string;    // "Credit/Debit Card (Stripe)", "Cash", etc.
+  enabled: boolean;
+}
+
+export interface PaymentMethodsResponse {
+  methods: PaymentMethodOption[];
+  venmo_handle: string;
+  zelle_info: string;
+  stripe_publishable_key: string;
+}
+
+export interface PaymentStats {
+  total_revenue: number;
+  pending_revenue: number;
+  total_payments: number;
+  completed_payments: number;
+  method_breakdown: Record<string, { total: number; count: number; label: string }>;
+}
+
+export interface DashboardStats {
+  total_customers: number;
+  active_customers: number;
+  pending_customers: number;
+  total_bookings: number;
+  pending_bookings: number;
+  total_enrollments: number;
+  active_classes: number;
+  total_revenue: number;
+  unread_messages: number;
+  recent_signups: number;
+}
+
 // ── API functions ───────────────────────────────────────────────────────────
 export const api = {
   // Health
@@ -281,6 +344,49 @@ export const api = {
 
   deleteChatMessage: (msgId: string) =>
     axiosInstance.delete<MessageResponse>(`/chat-messages/${msgId}`),
+
+  // ── Notifications ─────────────────────────────────────────────────────
+  getNotifications: (userId?: string, unreadOnly?: boolean) =>
+    axiosInstance.get<NotificationOut[]>("/notifications", { params: { user_id: userId, unread_only: unreadOnly } }),
+
+  getUnreadNotificationCount: (userId: string) =>
+    axiosInstance.get<{ unread_count: number }>(`/notifications/unread-count`, { params: { user_id: userId } }),
+
+  createNotification: (data: { user_id: string; type: string; title: string; message: string; action_url?: string; related_id?: string }) =>
+    axiosInstance.post<NotificationOut>("/notifications", data),
+
+  markNotificationRead: (notificationId: string) =>
+    axiosInstance.put<NotificationOut>(`/notifications/${notificationId}`, { read: true }),
+
+  markAllNotificationsRead: (userId: string) =>
+    axiosInstance.put<MessageResponse>(`/notifications/mark-all-read/${userId}`),
+
+  deleteNotification: (notificationId: string) =>
+    axiosInstance.delete<MessageResponse>(`/notifications/${notificationId}`),
+
+  // ── Payments ───────────────────────────────────────────────────────────
+  getPaymentMethods: () =>
+    axiosInstance.get<PaymentMethodsResponse>("/payments/methods"),
+
+  getPayments: (filters?: { user_id?: string; status?: string; payment_type?: string; payment_method?: string }) =>
+    axiosInstance.get<PaymentOut[]>("/payments", { params: filters }),
+
+  getPayment: (paymentId: string) =>
+    axiosInstance.get<PaymentOut>(`/payments/${paymentId}`),
+
+  createPayment: (data: { user_id: string; amount: number; payment_type: string; payment_method?: string; related_id?: string; description?: string }) =>
+    axiosInstance.post<PaymentOut>("/payments", data),
+  createStripeCheckoutSession: (data: { user_id: string; amount: number; payment_type: string; related_id?: string; description?: string }) =>
+    axiosInstance.post<{ checkout_url: string; session_id: string; payment_id: string }>("/payments/create-checkout-session", null, { params: data }),
+  confirmPayment: (paymentId: string, adminNotes?: string) =>
+    axiosInstance.post<PaymentOut>(`/payments/${paymentId}/confirm`, { admin_notes: adminNotes }),
+
+  getPaymentStats: () =>
+    axiosInstance.get<PaymentStats>("/payments/stats"),
+
+  // ── Dashboard ─────────────────────────────────────────────────────────
+  getDashboardStats: () =>
+    axiosInstance.get<DashboardStats>("/dashboard/stats"),
 };
 
 export default api;

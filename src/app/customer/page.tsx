@@ -25,6 +25,7 @@ import {
   Plus,
   X,
   Trash2,
+  CheckCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -39,6 +40,9 @@ export default function CustomerDashboard() {
   const [showAddFamily, setShowAddFamily] = useState(false);
   const [newFamilyMember, setNewFamilyMember] = useState({ name: '', birth_date: '', phone: '', email: '', relationship: 'child' });
   const [addingFamily, setAddingFamily] = useState(false);
+  const [enrollingClassId, setEnrollingClassId] = useState<string | null>(null);
+  const [enrolledClassIds, setEnrolledClassIds] = useState<Set<string>>(new Set());
+  const [enrollError, setEnrollError] = useState<string | null>(null);
 
   const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -62,8 +66,36 @@ export default function CustomerDashboard() {
     ]).then(([classesRes, bookingsRes]) => {
       setClasses(classesRes.data);
       setBookings(bookingsRes.data);
+      // Set enrolled class IDs from user data
+      if (user.classes) {
+        setEnrolledClassIds(new Set(user.classes));
+      }
     }).catch(() => {});
   }, [isAuthenticated, user]);
+
+  const handleEnroll = async (classId: string) => {
+    if (!user) return;
+    setEnrollingClassId(classId);
+    setEnrollError(null);
+    try {
+      await api.enrollInClass(user.id, classId);
+      setEnrolledClassIds((prev) => {
+        const next = new Set(prev);
+        next.add(classId);
+        return next;
+      });
+      setClasses((prev) =>
+        prev.map((c) =>
+          c.id === classId ? { ...c, current_students: c.current_students + 1 } : c
+        )
+      );
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail || 'Failed to enroll. Please try again.';
+      setEnrollError(detail);
+    } finally {
+      setEnrollingClassId(null);
+    }
+  };
 
   if (!isAuthenticated || !user) return null;
 
@@ -337,9 +369,22 @@ export default function CustomerDashboard() {
                             {cls.current_students}/{cls.max_students} students
                           </div>
                         </div>
-                        <button className="btn-primary w-full mt-4 text-sm py-2">
-                          Join Class
+                        <button
+                          onClick={() => handleEnroll(cls.id)}
+                          disabled={enrollingClassId === cls.id || enrolledClassIds.has(cls.id)}
+                          className={`w-full mt-4 text-sm py-2 rounded-xl font-semibold transition-colors ${
+                            enrolledClassIds.has(cls.id)
+                              ? 'bg-green-100 text-green-700 cursor-default'
+                              : enrollingClassId === cls.id
+                              ? 'bg-yellow-100 text-yellow-700 cursor-not-allowed'
+                              : 'bg-green-600 text-white hover:bg-green-700'
+                          }`}
+                        >
+                          {enrolledClassIds.has(cls.id) ? '✓ Enrolled' : enrollingClassId === cls.id ? 'Enrolling...' : 'Join Class'}
                         </button>
+                        {enrollError && (
+                          <p className="text-red-500 text-xs mt-2 text-center">{enrollError}</p>
+                        )}
                       </div>
                     ))}
                   </div>

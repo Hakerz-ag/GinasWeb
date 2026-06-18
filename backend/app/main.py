@@ -10,6 +10,7 @@ from app.config import get_settings
 from app.database import SessionLocal, init_db
 from app.services.seed import seed_db
 from app.routers import auth, users, bookings, classes, calendar, email, opentimes, assessments, scheduleblocks, chatmessages
+from app.routers import notifications, payments, dashboard, realtime
 
 settings = get_settings()
 
@@ -60,3 +61,7 @@ app.include_router(opentimes.router, prefix="/opentimes", tags=["Open Times"])
 app.include_router(assessments.router, prefix="/assessments", tags=["Assessments"])
 app.include_router(scheduleblocks.router, prefix="/schedule-blocks", tags=["Schedule Blocks"])
 app.include_router(chatmessages.router, prefix="/chat-messages", tags=["Chat Messages"])
+app.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
+app.include_router(payments.router, prefix="/payments", tags=["Payments"])
+app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
+app.include_router(realtime.router, tags=["Realtime"])

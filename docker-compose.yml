@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
+  # ── PostgreSQL Database ──────────────────────────────────────────────────
   postgres:
     image: postgres:15-alpine
     container_name: ginas-db
@@ -9,15 +9,20 @@ services:
     environment:
       POSTGRES_DB: ginas_tennis
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - ginas-network
 
-  # FastAPI Backend
+  # ── FastAPI Backend ───────────────────────────────────────────────────────
   backend:
     build:
       context: ./backend
@@ -27,23 +32,31 @@ services:
     env_file:
       - ./backend/.env
     environment:
+      - DB_ENGINE=postgresql
       - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=ginas_tennis
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
     ports:
       - "8000:8000"
     volumes:
       - ./backend/app:/app/app  # Hot reload in dev
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - ginas-network
 
-  # Next.js Frontend
+  # ── Next.js Frontend ──────────────────────────────────────────────────────
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
     container_name: ginas-frontend
     restart: unless-stopped
+    environment:
+      - BACKEND_URL=http://backend:8000
     ports:
       - "3000:3000"
     depends_on:

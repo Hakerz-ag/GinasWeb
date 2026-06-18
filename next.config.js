@@ -3,12 +3,15 @@ const nextConfig = {
   images: {
     domains: ['img.youtube.com', 'ginastennisworld.com'],
   },
-  // Proxy API requests to FastAPI backend in development
+  // Proxy API requests to FastAPI backend
+  // In production, set BACKEND_URL to your Render backend (e.g. https://ginas-backend.onrender.com)
+  // In development, it defaults to http://localhost:8000
   async rewrites() {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:8000/:path*',
+        destination: `${backendUrl}/:path*`,
       },
     ];
   },
