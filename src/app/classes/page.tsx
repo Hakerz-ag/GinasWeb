@@ -1,9 +1,10 @@
 'use client';
 
 import LayoutShell from '@/components/LayoutShell';
+import PaymentMethodSelector from '@/components/PaymentMethodSelector';
 import { api, ClassOut } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { Calendar, Clock, Users, DollarSign, ChevronRight, Filter, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Calendar, Clock, Users, DollarSign, ChevronRight, Filter, AlertTriangle, CheckCircle, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
@@ -16,6 +17,11 @@ export default function ClassesPage() {
   const [enrolledClassIds, setEnrolledClassIds] = useState<Set<string>>(new Set());
   const [enrollError, setEnrollError] = useState<string | null>(null);
   const [enrollSuccess, setEnrollSuccess] = useState<string | null>(null);
+  // Payment modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<ClassOut | null>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
 
   // Determine if user has completed assessment and their skill level
   const assessmentCompleted = user?.assessment_completed ?? false;
@@ -37,30 +43,55 @@ export default function ClassesPage() {
     }
   }, [isAuthenticated, user]);
 
-  const handleEnroll = async (classId: string) => {
+  const handleEnroll = (cls: ClassOut) => {
     if (!isAuthenticated || !user) return;
-    setEnrollingClassId(classId);
+    setSelectedClass(cls);
+    setShowPaymentModal(true);
     setEnrollError(null);
-    setEnrollSuccess(null);
+  };
+
+  const handlePaymentSelect = async (method: string, checkoutUrl?: string) => {
+    if (!isAuthenticated || !user || !selectedClass) return;
+
+    // For Stripe, redirect to checkout
+    if (method === 'stripe' && checkoutUrl) {
+      window.location.href = checkoutUrl;
+      return;
+    }
+
+    // For offline methods, create a pending payment and enroll
+    setPaymentLoading(true);
     try {
-      await api.enrollInClass(user.id, classId);
+      // Create payment record
+      await api.createPayment({
+        user_id: user.id,
+        amount: selectedClass.price,
+        payment_type: 'class',
+        payment_method: method,
+        related_id: selectedClass.id,
+        description: `${selectedClass.title} — ${selectedClass.day_of_week} ${selectedClass.start_time}`,
+      });
+      // Enroll in the class
+      await api.enrollInClass(user.id, selectedClass.id);
       setEnrolledClassIds((prev) => {
         const next = new Set(prev);
-        next.add(classId);
+        next.add(selectedClass.id);
         return next;
       });
-      setEnrollSuccess(classId);
+      setEnrollSuccess(selectedClass.id);
+      setPaymentSuccess(selectedClass.id);
+      setShowPaymentModal(false);
       // Update current_students count locally
       setClasses((prev) =>
         prev.map((c) =>
-          c.id === classId ? { ...c, current_students: c.current_students + 1 } : c
+          c.id === selectedClass.id ? { ...c, current_students: c.current_students + 1 } : c
         )
       );
     } catch (err: any) {
-      const detail = err?.response?.data?.detail || 'Failed to enroll. Please try again.';
+      const detail = err?.response?.data?.detail || 'Failed to complete enrollment. Please try again.';
       setEnrollError(detail);
     } finally {
-      setEnrollingClassId(null);
+      setPaymentLoading(false);
     }
   };
 
@@ -244,7 +275,11 @@ export default function ClassesPage() {
                       />
                     </div>
                     {/* Enrollment button */}
-                    {enrollSuccess === cls.id ? (
+                    {paymentSuccess === cls.id ? (
+                      <div className="btn-primary w-full text-center mt-4 bg-green-600 flex items-center justify-center gap-2">
+                        <CheckCircle className="w-4 h-4" /> Enrolled & Payment Recorded!
+                      </div>
+                    ) : enrollSuccess === cls.id ? (
                       <div className="btn-primary w-full text-center mt-4 bg-green-600 flex items-center justify-center gap-2">
                         <CheckCircle className="w-4 h-4" /> Enrolled!
                       </div>
@@ -270,7 +305,7 @@ export default function ClassesPage() {
                       </Link>
                     ) : (
                       <button
-                        onClick={() => handleEnroll(cls.id)}
+                        onClick={() => handleEnroll(cls)}
                         disabled={enrollingClassId === cls.id}
                         className={`btn-primary w-full text-center mt-4 ${enrollingClassId === cls.id ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
@@ -288,6 +323,39 @@ export default function ClassesPage() {
           )}
         </div>
       </section>
+
+      {/* Payment Modal */}
+      {showPaymentModal && selectedClass && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Complete Enrollment</h2>
+                <button
+                  onClick={() => { setShowPaymentModal(false); setEnrollError(null); }}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              <div className="bg-green-50 rounded-xl p-3 mb-4">
+                <p className="font-semibold text-green-900">{selectedClass.title}</p>
+                <p className="text-sm text-green-700">
+                  {selectedClass.day_of_week}, {selectedClass.start_time} – {selectedClass.end_time}
+                </p>
+              </div>
+              <PaymentMethodSelector
+                amount={selectedClass.price}
+                paymentType="class"
+                relatedId={selectedClass.id}
+                description={`${selectedClass.title} — ${selectedClass.day_of_week} ${selectedClass.start_time}`}
+                onSelect={handlePaymentSelect}
+                loading={paymentLoading}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </LayoutShell>
   );
 }
