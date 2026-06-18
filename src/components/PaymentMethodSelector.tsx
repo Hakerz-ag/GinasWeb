@@ -17,6 +17,8 @@ interface PaymentMethodSelectorProps {
   description?: string;
   /** Whether the payment is being processed */
   loading?: boolean;
+  /** Error message from parent (e.g. API error) to display inside the modal */
+  error?: string | null;
 }
 
 const METHOD_ICONS: Record<string, React.ReactNode> = {
@@ -44,6 +46,7 @@ export default function PaymentMethodSelector({
   relatedId,
   description,
   loading = false,
+  error: parentError,
 }: PaymentMethodSelectorProps) {
   const [methods, setMethods] = useState<PaymentMethodOption[]>([]);
   const [venmoHandle, setVenmoHandle] = useState('');
@@ -51,6 +54,7 @@ export default function PaymentMethodSelector({
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
   const [fetchingMethods, setFetchingMethods] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     api.getPaymentMethods()
@@ -75,6 +79,7 @@ export default function PaymentMethodSelector({
   const handleConfirm = async () => {
     if (!selectedMethod) return;
     setError(null);
+    setConfirming(true);
 
     // For Stripe, create a checkout session
     if (selectedMethod === 'stripe') {
@@ -89,15 +94,20 @@ export default function PaymentMethodSelector({
         onSelect('stripe', res.data.checkout_url);
       } catch (err: any) {
         setError(err?.response?.data?.detail || 'Failed to create checkout session. Please try another method.');
+      } finally {
+        setConfirming(false);
       }
       return;
     }
 
-    // For offline methods, create a pending payment
+    // For offline methods, delegate to parent handler
     try {
       onSelect(selectedMethod);
     } catch {
       setError('Something went wrong. Please try again.');
+    } finally {
+      // Don't reset confirming for offline methods — the parent manages loading state
+      // and will close the modal on success or show an error on failure
     }
   };
 
@@ -199,25 +209,25 @@ export default function PaymentMethodSelector({
       )}
 
       {/* Error */}
-      {error && (
+      {(error || parentError) && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-          <p className="text-sm text-red-700">{error}</p>
+          <p className="text-sm text-red-700">{error || parentError}</p>
         </div>
       )}
 
       {/* Confirm Button */}
       <button
         onClick={handleConfirm}
-        disabled={!selectedMethod || loading}
+        disabled={!selectedMethod || loading || confirming}
         className={`w-full py-3 px-4 rounded-xl font-semibold text-base transition-all ${
           !selectedMethod
             ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            : loading
+            : loading || confirming
             ? 'bg-green-400 text-white cursor-wait'
             : 'bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]'
         }`}
       >
-        {loading ? (
+        {loading || confirming ? (
           <span className="flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" /> Processing...
           </span>

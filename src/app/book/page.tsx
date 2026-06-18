@@ -688,10 +688,8 @@ export default function BookCourtPage() {
                 description={`Court ${selectedCourt} — ${selectedDate} ${selectedTime}`}
                 onSelect={handlePaymentSelect}
                 loading={paymentLoading}
+                error={submitError}
               />
-              {submitError && (
-                <p className="text-red-500 text-sm mt-3 text-center">{submitError}</p>
-              )}
             </div>
           </div>
         </div>

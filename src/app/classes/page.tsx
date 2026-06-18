@@ -354,6 +354,7 @@ export default function ClassesPage() {
                 description={`${selectedClass.title} — ${selectedClass.day_of_week} ${selectedClass.start_time}`}
                 onSelect={handlePaymentSelect}
                 loading={paymentLoading}
+                error={enrollError}
               />
             </div>
           </div>
