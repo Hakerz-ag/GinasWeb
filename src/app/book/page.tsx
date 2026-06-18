@@ -1,8 +1,9 @@
 'use client';
 
 import LayoutShell from '@/components/LayoutShell';
+import PaymentMethodSelector from '@/components/PaymentMethodSelector';
 import { useState } from 'react';
-import { Calendar, Clock, Users, MapPin, Info, CheckCircle, Award } from 'lucide-react';
+import { Calendar, Clock, Users, MapPin, Info, CheckCircle, Award, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 
@@ -42,6 +43,11 @@ export default function BookCourtPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Payment modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
   const handleAssessmentSubmit = async () => {
     if (!isAuthenticated || !user) return;
     try {
@@ -62,10 +68,38 @@ export default function BookCourtPage() {
       setSubmitError('Please sign in to book a court.');
       return;
     }
-    setSubmitting(true);
+    // Open payment modal instead of submitting directly
+    setShowPaymentModal(true);
     setSubmitError(null);
+  };
+
+  // Calculate estimated price for the booking
+  const getBookingPrice = () => {
+    const duration = parseFloat(selectedDuration) || 1.5;
+    const rate = contractOptions[contractType].pricePerHour;
+    let price = duration * rate;
+    if (ballMachine) price += duration * 10;
+    return price;
+  };
+
+  const handlePaymentSelect = async (method: string, checkoutUrl?: string) => {
+    if (!isAuthenticated || !user) return;
+
+    // For Stripe, redirect to checkout
+    if (method === 'stripe' && checkoutUrl) {
+      window.location.href = checkoutUrl;
+      return;
+    }
+
+    // For offline methods, create a pending payment and submit the booking
+    setPaymentLoading(true);
     try {
-      // Calculate end time based on duration
+      const duration = parseFloat(selectedDuration) || 1.5;
+      const rate = contractOptions[contractType].pricePerHour;
+      let price = duration * rate;
+      if (ballMachine) price += duration * 10;
+
+      // Create booking first
       const startHour = parseInt(selectedTime.split(':')[0]);
       const startMin = selectedTime.includes('30') ? 30 : 0;
       const isPM = selectedTime.includes('PM');
@@ -75,7 +109,7 @@ export default function BookCourtPage() {
       if (endMin >= 60) { endHour += 1; endMin -= 60; }
       const endTime = `${endHour}:${endMin === 0 ? '00' : endMin.toString().padStart(2, '0')} ${isPM ? 'PM' : 'AM'}`;
 
-      await api.createBooking({
+      const bookingRes = await api.createBooking({
         user_id: user.id,
         court_number: selectedCourt || 1,
         date: selectedDate,
@@ -86,12 +120,25 @@ export default function BookCourtPage() {
         party_size: parseInt(partySize) || 2,
         notes: notes,
       });
+
+      // Create a pending payment record linked to the booking
+      await api.createPayment({
+        user_id: user.id,
+        amount: price,
+        payment_type: 'booking',
+        payment_method: method,
+        related_id: bookingRes.data.id,
+        description: `Court ${selectedCourt} — ${selectedDate} ${selectedTime} (${selectedDuration}hrs)${ballMachine ? ' + Ball Machine' : ''}`,
+      });
+
+      setPaymentSuccess(true);
+      setShowPaymentModal(false);
       setSubmitted(true);
     } catch (err: any) {
       const detail = err?.response?.data?.detail || 'Failed to submit booking. Please try again.';
       setSubmitError(detail);
     } finally {
-      setSubmitting(false);
+      setPaymentLoading(false);
     }
   };
 
@@ -107,9 +154,14 @@ export default function BookCourtPage() {
             <p className="text-gray-600 mb-2">
               Your court reservation request has been sent. An admin will review and confirm your booking.
             </p>
-            <p className="text-gray-500 text-sm mb-6">
+            <p className="text-gray-500 text-sm mb-2">
               You&apos;ll receive a confirmation email once your booking is approved.
             </p>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-4">
+              <p className="text-sm text-yellow-800 font-medium">
+                💳 Payment is <strong>pending</strong> and will be confirmed once Gina accepts your booking.
+              </p>
+            </div>
             <div className="bg-green-50 rounded-xl p-4 text-left text-sm space-y-2 mb-6">
               <div className="flex justify-between">
                 <span className="text-gray-500">Court:</span>
@@ -587,7 +639,7 @@ export default function BookCourtPage() {
                     Back
                   </button>
                   <button onClick={handleSubmit} disabled={submitting} className={`btn-yellow ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                    {submitting ? 'Submitting...' : 'Submit Booking Request'}
+                    {submitting ? 'Submitting...' : 'Proceed to Payment'}
                   </button>
                   {submitError && (
                     <p className="text-red-500 text-sm mt-2 text-center">{submitError}</p>
@@ -600,6 +652,50 @@ export default function BookCourtPage() {
           )}
         </div>
       </section>
+
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Complete Booking</h2>
+                <button
+                  onClick={() => { setShowPaymentModal(false); setSubmitError(null); }}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-4">
+                <p className="text-sm text-yellow-800">
+                  <strong>⏳ Pending Payment:</strong> Your payment will be held as pending until Gina accepts your booking request.
+                </p>
+              </div>
+              <div className="bg-green-50 rounded-xl p-3 mb-4">
+                <p className="font-semibold text-green-900">Court {selectedCourt} — {selectedDate}</p>
+                <p className="text-sm text-green-700">
+                  {selectedTime} ({selectedDuration} hrs) · {contractOptions[contractType].label}
+                  {ballMachine ? ' + Ball Machine' : ''}
+                </p>
+                <p className="text-sm text-green-700 mt-1">
+                  Party size: {partySize} · Est. rate: ${contractOptions[contractType].pricePerHour}/hr
+                </p>
+              </div>
+              <PaymentMethodSelector
+                amount={getBookingPrice()}
+                paymentType="booking"
+                description={`Court ${selectedCourt} — ${selectedDate} ${selectedTime}`}
+                onSelect={handlePaymentSelect}
+                loading={paymentLoading}
+              />
+              {submitError && (
+                <p className="text-red-500 text-sm mt-3 text-center">{submitError}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </LayoutShell>
   );
 }

@@ -343,6 +343,9 @@ export default function ClassesPage() {
                 <p className="text-sm text-green-700">
                   {selectedClass.day_of_week}, {selectedClass.start_time} – {selectedClass.end_time}
                 </p>
+                <p className="text-xs text-green-600 mt-1 font-medium">
+                  💳 Payment is required to confirm your enrollment.
+                </p>
               </div>
               <PaymentMethodSelector
                 amount={selectedClass.price}

@@ -134,7 +134,15 @@ export default function Footer() {
             © {new Date().getFullYear()} Gina's Tennis World. All rights reserved.
           </p>
           <p className="text-green-500 text-xs">
-            Designed with ❤️ for the Berkeley Heights tennis community
+            Designed with ❤️ for the Berkeley Heights tennis community · Built by{' '}
+            <a
+              href="https://prismai.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-yellow-400 hover:text-yellow-300 transition-colors font-semibold"
+            >
+              Prism AI
+            </a>
           </p>
         </div>
       </div>
