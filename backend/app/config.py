@@ -24,7 +24,10 @@ class Settings(BaseSettings):
     # Set DB_ENGINE=sqlite to use local SQLite (no PostgreSQL needed)
     # Set DB_ENGINE=postgresql (or leave empty) to use PostgreSQL
     # Alternatively, set DATABASE_URL directly (overrides individual DB_* vars)
-    database_url_env: str = ""  # Full connection string override (e.g. from cloud provider)
+    # In Pydantic, the env var name is derived from the field name:
+    #   database_url_override → DATABASE_URL_OVERRIDE
+    #   We use alias so the env var is simply DATABASE_URL
+    database_url_override: str = ""  # Full connection string override (e.g. from cloud provider)
     db_engine: str = "sqlite"
     db_host: str = "localhost"
     db_name: str = "ginas_tennis"
@@ -67,13 +70,18 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        env_prefix="",           # no prefix for env vars
     )
+
+    # Allow DATABASE_URL env var to map to database_url_override field
+    # Pydantic-settings will check DATABASE_URL_OVERRIDE first, then fall back
+    # to the individual DB_* vars via the property below.
 
     @property
     def database_url(self) -> str:
-        # Allow full DATABASE_URL override (common for cloud providers like Neon/Render)
-        if self.database_url_env:
-            return self.database_url_env
+        # Allow full DATABASE_URL_OVERRIDE override (common for cloud providers like Neon/Render)
+        if self.database_url_override:
+            return self.database_url_override
         if self.db_engine == "sqlite":
             return "sqlite:///./ginas_tennis.db"
         url = f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
