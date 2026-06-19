@@ -51,7 +51,10 @@ export default function ClassesPage() {
   };
 
   const handlePaymentSelect = async (method: string, checkoutUrl?: string) => {
-    if (!isAuthenticated || !user || !selectedClass) return;
+    if (!isAuthenticated || !user || !selectedClass) {
+      console.error('handlePaymentSelect: missing auth or class', { isAuthenticated, user: !!user, selectedClass: !!selectedClass });
+      return;
+    }
 
     // For Stripe, redirect to checkout
     if (method === 'stripe' && checkoutUrl) {
@@ -59,8 +62,11 @@ export default function ClassesPage() {
       return;
     }
 
+    console.log('handlePaymentSelect: creating payment and enrolling', { method, classId: selectedClass.id, userId: user.id });
+
     // For offline methods, create a pending payment and enroll
     setPaymentLoading(true);
+    setEnrollError(null);
     try {
       // Create payment record
       await api.createPayment({
@@ -88,6 +94,7 @@ export default function ClassesPage() {
         )
       );
     } catch (err: any) {
+      console.error('Payment/enrollment error:', err?.response?.data || err);
       const detail = err?.response?.data?.detail || 'Failed to complete enrollment. Please try again.';
       setEnrollError(detail);
     } finally {

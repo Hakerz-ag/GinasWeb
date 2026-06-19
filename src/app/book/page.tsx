@@ -93,6 +93,7 @@ export default function BookCourtPage() {
 
     // For offline methods, create a pending payment and submit the booking
     setPaymentLoading(true);
+    setSubmitError(null);
     try {
       const duration = parseFloat(selectedDuration) || 1.5;
       const rate = contractOptions[contractType].pricePerHour;
@@ -135,6 +136,7 @@ export default function BookCourtPage() {
       setShowPaymentModal(false);
       setSubmitted(true);
     } catch (err: any) {
+      console.error('Booking/payment error:', err?.response?.data || err);
       const detail = err?.response?.data?.detail || 'Failed to submit booking. Please try again.';
       setSubmitError(detail);
     } finally {

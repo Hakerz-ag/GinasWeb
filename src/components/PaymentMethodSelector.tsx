@@ -63,7 +63,8 @@ export default function PaymentMethodSelector({
         setVenmoHandle(res.data.venmo_handle);
         setZelleInfo(res.data.zelle_info);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Failed to load payment methods:', err?.response?.data || err);
         // Fallback: show all methods if API is unavailable
         setMethods([
           { id: 'cash', label: 'Cash', enabled: true },
@@ -79,10 +80,11 @@ export default function PaymentMethodSelector({
   const handleConfirm = async () => {
     if (!selectedMethod) return;
     setError(null);
-    setConfirming(true);
+    console.log('PaymentMethodSelector: handleConfirm called with method:', selectedMethod);
 
-    // For Stripe, create a checkout session
+    // For Stripe, create a checkout session (component manages its own async state)
     if (selectedMethod === 'stripe') {
+      setConfirming(true);
       try {
         const res = await api.createStripeCheckoutSession({
           amount: Math.round(amount * 100), // Convert to cents
@@ -101,14 +103,8 @@ export default function PaymentMethodSelector({
     }
 
     // For offline methods, delegate to parent handler
-    try {
-      onSelect(selectedMethod);
-    } catch {
-      setError('Something went wrong. Please try again.');
-    } finally {
-      // Don't reset confirming for offline methods — the parent manages loading state
-      // and will close the modal on success or show an error on failure
-    }
+    // Parent manages loading state via the `loading` prop and will close modal on success
+    onSelect(selectedMethod);
   };
 
   if (fetchingMethods) {
