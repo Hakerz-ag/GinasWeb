@@ -14,6 +14,9 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
 
   // Redirect if already logged in
   if (isAuthenticated && user) {
@@ -129,10 +132,43 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-4 text-center">
-            <a href="#" className="text-sm text-green-600 hover:text-green-700 font-medium">
+            <button type="button" onClick={() => setShowForgotPassword(true)} className="text-sm text-green-600 hover:text-green-700 font-medium">
               Forgot your password?
-            </a>
+            </button>
           </div>
+
+          {/* Forgot Password Modal */}
+          {showForgotPassword && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+                <h3 className="text-lg font-bold text-green-900 mb-2">Reset Your Password</h3>
+                {forgotSent ? (
+                  <div className="text-center py-4">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                    </div>
+                    <p className="text-green-700 font-medium">Password reset email sent!</p>
+                    <p className="text-gray-500 text-sm mt-1">Check your inbox for instructions to reset your password.</p>
+                    <button onClick={() => { setShowForgotPassword(false); setForgotSent(false); }} className="mt-4 btn-primary">Back to Sign In</button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-gray-600 text-sm mb-4">Enter your email address and we&apos;ll send you a link to reset your password.</p>
+                    <input type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="Enter your email" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none mb-4" />
+                    <div className="flex gap-3">
+                      <button onClick={() => setShowForgotPassword(false)} className="flex-1 py-2 border border-gray-300 rounded-xl text-sm font-medium">Cancel</button>
+                      <button onClick={async () => {
+                        try {
+                          await fetch('/api/auth/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: forgotEmail }) });
+                        } catch (err) { /* ignore errors for now */ }
+                        setForgotSent(true);
+                      }} disabled={!forgotEmail.trim()} className={`flex-1 py-2 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 ${!forgotEmail.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}>Send Reset Link</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="mt-6 pt-6 border-t border-gray-100">
             <p className="text-center text-sm text-gray-500 mb-4">

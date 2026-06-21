@@ -186,7 +186,7 @@ export default function ClassesPage() {
           <Filter className="w-4 h-4 text-gray-400 shrink-0" />
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-gray-500 uppercase">Level:</span>
-            {['all', 'beginner', 'intermediate', 'advanced', 'all'].map((l) => (
+            {['all', 'beginner', 'intermediate', 'advanced'].map((l) => (
               <button
                 key={l}
                 onClick={() => setLevelFilter(l)}
@@ -241,7 +241,12 @@ export default function ClassesPage() {
                           ? '🎾 Junior'
                           : '💪 Adult'}
                       </span>
-                      <span className="text-green-200 text-xs font-medium">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        cls.level === 'beginner' ? 'bg-green-100 text-green-700'
+                        : cls.level === 'intermediate' ? 'bg-blue-100 text-blue-700'
+                        : cls.level === 'advanced' ? 'bg-purple-100 text-purple-700'
+                        : 'bg-gray-100 text-gray-700'
+                      }`}>
                         {cls.level.charAt(0).toUpperCase() + cls.level.slice(1)}
                       </span>
                     </div>

@@ -20,6 +20,7 @@ export default function RegisterPage() {
     accountType: 'individual',
     agreeTerms: false,
   });
+  const [showTerms, setShowTerms] = useState(false);
 
   const handleSubmit = async () => {
     setError('');
@@ -79,10 +80,10 @@ export default function RegisterPage() {
       <div className="w-full max-w-lg">
         {/* Logo */}
         <div className="text-center mb-6">
-          <Link href="/" className="inline-flex items-center gap-2 text-green-300 hover:text-yellow-400 text-sm">
+          <button onClick={() => window.history.back()} className="inline-flex items-center gap-2 text-green-300 hover:text-yellow-400 text-sm">
             <ArrowLeft className="w-4 h-4" />
-            Back to Home
-          </Link>
+            Back
+          </button>
           <div className="mt-4">
             <div className="w-14 h-14 rounded-full overflow-hidden mx-auto mb-3">
               <img src="/Logo.png" alt="Gina's Tennis World" className="w-full h-full object-cover" />
@@ -213,10 +214,36 @@ export default function RegisterPage() {
               <label className="flex items-start gap-3 mt-4">
                 <input type="checkbox" checked={formData.agreeTerms} onChange={(e) => setFormData({ ...formData, agreeTerms: e.target.checked })} className="mt-1 w-4 h-4 text-green-600 rounded" />
                 <span className="text-sm text-gray-600">
-                  I agree to the terms and conditions and understand that my registration is subject
-                  to admin approval, and that I must complete a 1-on-1 assessment before enrolling in classes.
+                  I agree to the{' '}
+                  <button type="button" onClick={() => setShowTerms(true)} className="text-green-600 font-semibold hover:text-green-700 underline">
+                    terms and conditions
+                  </button>{' '}
+                  and understand that my registration is subject to admin approval, and that I must complete a 1-on-1 assessment before enrolling in classes.
                 </span>
               </label>
+
+              {/* Terms & Conditions Modal */}
+              {showTerms && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                  <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-bold text-green-900">Terms & Conditions</h3>
+                      <button onClick={() => setShowTerms(false)} className="text-gray-400 hover:text-gray-600"><ArrowLeft className="w-5 h-5" /></button>
+                    </div>
+                    <div className="text-sm text-gray-700 space-y-3">
+                      <p><strong>1. Registration & Approval</strong><br />All registrations are subject to admin approval. You will be notified once your account has been reviewed and approved.</p>
+                      <p><strong>2. Assessment Requirement</strong><br />All new students must complete a 1-on-1 assessment with Gina before enrolling in any classes. This helps us place you at the appropriate skill level.</p>
+                      <p><strong>3. Payment & Cancellation</strong><br />Payment is due at the time of booking or enrollment. Cancellations must be made at least 24 hours in advance for a full refund. No-shows are non-refundable.</p>
+                      <p><strong>4. Court Rentals</strong><br />Court rentals are available on a first-come, first-served basis. 30-week contracts guarantee your weekly time slot. Open time rentals are subject to availability.</p>
+                      <p><strong>5. Conduct & Safety</strong><br />All players and guests must follow facility rules and conduct themselves respectfully. Gina&apos;s Tennis World reserves the right to refuse service or remove anyone who violates these rules.</p>
+                      <p><strong>6. Liability</strong><br />Participants play at their own risk. Gina&apos;s Tennis World is not liable for personal injuries sustained during play or instruction.</p>
+                      <p><strong>7. Privacy</strong><br />We respect your privacy. Personal information collected during registration is used solely for account management and communication about our programs.</p>
+                      <p><strong>8. Changes to Terms</strong><br />Gina&apos;s Tennis World reserves the right to update these terms at any time. Continued use of our services constitutes acceptance of any changes.</p>
+                    </div>
+                    <button onClick={() => setShowTerms(false)} className="mt-6 w-full btn-primary">I Understand</button>
+                  </div>
+                </div>
+              )}
               <div className="pt-4 flex justify-between">
                 <button onClick={() => setStep(2)} className="btn-secondary">Back</button>
                 <button onClick={handleSubmit} disabled={!formData.agreeTerms} className={`btn-yellow ${!formData.agreeTerms ? 'opacity-50 cursor-not-allowed' : ''}`}>

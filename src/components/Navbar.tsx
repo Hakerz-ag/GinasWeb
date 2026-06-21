@@ -34,12 +34,13 @@ export default function Navbar() {
       ? [
           { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
           { href: '/admin/calendar', label: 'Calendar', icon: Calendar },
-          { href: '/staff', label: 'Staff', icon: Users },
         ]
       : [
+          { href: '/customer', label: 'Home', icon: null },
           { href: '/videos', label: 'Videos', icon: null },
           { href: '/book', label: 'Book a Court', icon: null },
           { href: '/classes', label: 'Schedule a Class', icon: null },
+          { href: '/staff', label: 'Our Staff', icon: null },
         ]
     : [
         { href: '/', label: 'Home', icon: null },

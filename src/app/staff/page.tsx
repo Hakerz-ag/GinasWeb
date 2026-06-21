@@ -61,45 +61,6 @@ export default function StaffPage() {
           </div>
         </div>
       </section>
-
-      {/* Why Choose Us */}
-      <section className="bg-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="section-heading">Why Train With Us?</h2>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                icon: '🏆',
-                title: 'Experienced Pros',
-                desc: 'USPTA and PTR certified instructors with decades of teaching experience.',
-              },
-              {
-                icon: '⚡',
-                title: 'ACE Attack System',
-                desc: 'The first and only ACE Attack training system in New Jersey.',
-              },
-              {
-                icon: '🎾',
-                title: 'Indoor Courts',
-                desc: 'Play year-round on our indoor courts — rain or shine, hot or cold.',
-              },
-              {
-                icon: '👥',
-                title: 'Small Class Sizes',
-                desc: 'Personalized attention with limited class sizes for maximum improvement.',
-              },
-            ].map((item) => (
-              <div key={item.title} className="text-center p-6">
-                <div className="text-4xl mb-3">{item.icon}</div>
-                <h3 className="font-bold text-green-900 mb-2">{item.title}</h3>
-                <p className="text-gray-600 text-sm">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
     </LayoutShell>
   );
 }

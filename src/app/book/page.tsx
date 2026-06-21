@@ -101,14 +101,20 @@ export default function BookCourtPage() {
       if (ballMachine) price += duration * 10;
 
       // Create booking first
-      const startHour = parseInt(selectedTime.split(':')[0]);
-      const startMin = selectedTime.includes('30') ? 30 : 0;
-      const isPM = selectedTime.includes('PM');
+      // Parse start time properly (handle AM/PM)
+      const timeStr = selectedTime;
+      let startHourNum = parseInt(timeStr.split(':')[0]);
+      const startMinNum = timeStr.includes(':30') ? 30 : 0;
+      if (timeStr.includes('PM') && startHourNum !== 12) startHourNum += 12;
+      if (timeStr.includes('AM') && startHourNum === 12) startHourNum = 0;
       const durationHours = parseFloat(selectedDuration);
-      let endHour = startHour + Math.floor(durationHours);
-      let endMin = startMin + (durationHours % 1) * 60;
-      if (endMin >= 60) { endHour += 1; endMin -= 60; }
-      const endTime = `${endHour}:${endMin === 0 ? '00' : endMin.toString().padStart(2, '0')} ${isPM ? 'PM' : 'AM'}`;
+      let endHourNum = startHourNum + Math.floor(durationHours);
+      let endMinNum = startMinNum + (durationHours % 1) * 60;
+      if (endMinNum >= 60) { endHourNum += 1; endMinNum -= 60; }
+      // Convert back to 12-hour format
+      const endAmPm = endHourNum >= 12 ? 'PM' : 'AM';
+      const endHour12 = endHourNum > 12 ? endHourNum - 12 : endHourNum === 0 ? 12 : endHourNum;
+      const endTime = `${endHour12}:${endMinNum === 0 ? '00' : endMinNum.toString().padStart(2, '0')} ${endAmPm}`;
 
       const bookingRes = await api.createBooking({
         user_id: user.id,

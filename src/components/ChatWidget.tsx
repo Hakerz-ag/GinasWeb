@@ -40,7 +40,7 @@ export default function ChatWidget() {
     <div className="fixed bottom-6 right-6 z-50">
       {showChat && (
         <div className="mb-4 w-80 bg-white rounded-2xl shadow-2xl border border-green-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4">
-          <div className="bg-gradient-to-r from-green-800 to-green-900 p-4 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-green-800 to-green-900 p-4 flex items-center">
             <div className="flex items-center gap-2">
               <MessageCircle className="w-5 h-5 text-yellow-400" />
               <div>
@@ -48,7 +48,6 @@ export default function ChatWidget() {
                 <p className="text-green-300 text-xs">We typically reply within minutes</p>
               </div>
             </div>
-            <button onClick={() => setShowChat(false)} className="text-green-300 hover:text-white"><X className="w-5 h-5" /></button>
           </div>
           {chatSent ? (
             <div className="p-6 text-center">

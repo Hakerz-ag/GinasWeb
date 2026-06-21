@@ -427,24 +427,32 @@ export default function HomeClient() {
                 desc: 'Fun, structured programs for kids ages 6-17. Learn fundamentals, develop competitive skills, and build a love for the game.',
                 icon: '🎾',
                 color: 'bg-green-600',
+                link: '/classes',
+                linkText: 'View Schedule',
               },
               {
                 title: 'Adult Clinics',
                 desc: 'Beginner through advanced. Improve your strokes, strategy, and fitness in a supportive group environment.',
                 icon: '💪',
                 color: 'bg-green-700',
+                link: '/classes',
+                linkText: 'View Schedule',
               },
               {
                 title: 'Private Lessons',
                 desc: 'One-on-one instruction tailored to your specific needs. Fastest way to improve your game.',
                 icon: '🎯',
                 color: 'bg-green-800',
+                link: '/book',
+                linkText: 'Book a Lesson',
               },
               {
-                title: 'Court Rentals',
+                title: 'Indoor Courts',
                 desc: 'Book our indoor courts for practice, parties, or events. Year-round availability.',
                 icon: '🏟️',
                 color: 'bg-green-600',
+                link: '/book',
+                linkText: 'Book a Court',
               },
             ].map((program) => (
               <div
@@ -455,7 +463,10 @@ export default function HomeClient() {
                 <h3 className="font-bold text-green-900 text-lg mb-2">
                   {program.title}
                 </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">{program.desc}</p>
+                <p className="text-gray-600 text-sm leading-relaxed mb-3">{program.desc}</p>
+                <Link href={program.link} className="text-sm font-semibold text-green-600 hover:text-green-700 inline-flex items-center gap-1">
+                  {program.linkText} <ChevronRight className="w-4 h-4" />
+                </Link>
               </div>
             ))}
           </div>
@@ -508,6 +519,9 @@ export default function HomeClient() {
                     ))}
                   </div>
                 )}
+                <Link href="/staff" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-green-600 hover:text-green-700">
+                  Learn More <ChevronRight className="w-4 h-4" />
+                </Link>
               </div>
             ))}
           </div>
@@ -571,6 +585,7 @@ function VideoCard({
   featured?: boolean;
 }) {
   const [playing, setPlaying] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const isLocal = !!video.localVideo;
 
   return (
@@ -606,12 +621,17 @@ function VideoCard({
                 muted
                 preload="metadata"
               />
-            ) : (
+            ) : !imgError ? (
               <img
                 src={video.thumbnail}
                 alt={video.title}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                onError={() => setImgError(true)}
               />
+            ) : (
+              <div className="w-full h-full bg-green-800 flex items-center justify-center">
+                <Play className="w-12 h-12 text-yellow-400" />
+              </div>
             )}
             <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors flex items-center justify-center">
               <div className="w-14 h-14 bg-yellow-500 rounded-full flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">

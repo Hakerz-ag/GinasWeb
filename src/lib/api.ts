@@ -134,6 +134,7 @@ export interface ScheduleBlockOut {
   end_time: string;
   reason: string;
   block_type: string;
+  date?: string;
 }
 
 export interface ChatMessageOut {

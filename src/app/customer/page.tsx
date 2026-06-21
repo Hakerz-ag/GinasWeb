@@ -291,17 +291,36 @@ export default function CustomerDashboard() {
                             </p>
                           </div>
                         </div>
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-bold ${
-                            booking.status === 'approved'
-                              ? 'bg-green-100 text-green-700'
-                              : booking.status === 'pending'
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : 'bg-red-100 text-red-700'
-                          }`}
-                        >
-                          {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-bold ${
+                              booking.status === 'approved'
+                                ? 'bg-green-100 text-green-700'
+                                : booking.status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-red-100 text-red-700'
+                            }`}
+                          >
+                            {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                          </span>
+                          {booking.status !== 'cancelled' && (
+                            <button
+                              onClick={async () => {
+                                if (confirm('Are you sure you want to cancel this booking?')) {
+                                  try {
+                                    await api.updateBooking(booking.id, { status: 'cancelled' });
+                                    setBookings(bookings.map(b => b.id === booking.id ? { ...b, status: 'cancelled' } : b));
+                                  } catch (err) {
+                                    console.error('Failed to cancel booking:', err);
+                                  }
+                                }
+                              }}
+                              className="text-xs bg-red-100 text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-200 font-semibold"
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -339,12 +358,18 @@ export default function CustomerDashboard() {
                     Showing classes for your skill level: <span className={`font-bold px-2 py-0.5 rounded-full text-xs ${
                       user.skill_level === 'beginner' ? 'bg-green-100 text-green-700'
                       : user.skill_level === 'intermediate' ? 'bg-blue-100 text-blue-700'
-                      : 'bg-purple-100 text-purple-700'
+                      : user.skill_level === 'advanced' ? 'bg-purple-100 text-purple-700'
+                      : 'bg-gray-100 text-gray-700'
                     }`}>{user.skill_level.charAt(0).toUpperCase() + user.skill_level.slice(1)}</span>
                   </p>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {classes
-                      .filter((cls) => cls.level === user.skill_level || user.skill_level === 'advanced')
+                      .filter((cls) => {
+                        // Show "all" level classes to everyone, otherwise match skill level
+                        if (cls.level === 'all') return true;
+                        if (user.skill_level === 'none' || user.skill_level === 'beginner') return cls.level === 'beginner' || cls.level === 'all';
+                        return cls.level === user.skill_level || cls.level === 'all';
+                      })
                       .map((cls) => (
                       <div key={cls.id} className="card p-5">
                         <div className="flex items-center justify-between mb-3">
@@ -447,7 +472,12 @@ export default function CustomerDashboard() {
                         return <div key={`empty-${idx}`} className="h-20 border-b border-r border-green-100/50 bg-green-50/50" />;
                       }
                       const dayClasses = day ? classes.filter((c) => c.day_of_week === dayNameMap[new Date(year, month, day).getDay()]) : [];
-                      const dayBookings = day ? bookings.filter((b) => b.user_id === user?.id) : [];
+                      const dayBookings = day ? bookings.filter((b) => {
+                        // Match bookings to the specific date
+                        const bookingDate = b.date;
+                        const cellDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        return b.user_id === user?.id && bookingDate === cellDate;
+                      }) : [];
                       const hasClasses = dayClasses.length > 0;
                       const hasBookings = dayBookings.length > 0;
                       const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();

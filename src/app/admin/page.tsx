@@ -64,7 +64,9 @@ export default function AdminDashboard() {
   const [openTimeCourt, setOpenTimeCourt] = useState('1');
   const [newClass, setNewClass] = useState({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', maxStudents: 6, price: 35, instructor: 'Wendy' });
   const [skillDropdownOpen, setSkillDropdownOpen] = useState<string | null>(null);
-  const [newBlock, setNewBlock] = useState({ day: 'Monday', startTime: '12:00 PM', endTime: '1:00 PM', reason: 'Lunch break', blockType: 'lunch' });
+  const [newBlock, setNewBlock] = useState({ day: 'Monday', startTime: '12:00 PM', endTime: '1:00 PM', reason: 'Lunch break', blockType: 'lunch', date: '' });
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyMessage, setReplyMessage] = useState('');
 
   // Fetch data from API on mount
   useEffect(() => {
@@ -441,6 +443,7 @@ export default function AdminDashboard() {
                         <div>
                           <p className="font-semibold text-red-900">{block.day}: {block.start_time} – {block.end_time}</p>
                           <p className="text-sm text-red-700">{block.reason}</p>
+                          {block.date && <p className="text-xs text-red-600 mt-0.5">Date: {new Date(block.date).toLocaleDateString()}</p>}
                         </div>
                         <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${block.block_type === 'closure' ? 'bg-red-100 text-red-700' : block.block_type === 'lunch' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>{block.block_type}</span>
                       </div>
@@ -490,7 +493,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {users.map(u => (
+                    {users.sort((a, b) => a.name.localeCompare(b.name)).map(u => (
                       <tr key={u.id} className="hover:bg-green-50/50">
                         <td className="px-4 py-3 text-sm font-medium text-green-900">{u.name}</td>
                         <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-bold ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : u.role === 'coach' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>{u.role.charAt(0).toUpperCase() + u.role.slice(1)}</span></td>
@@ -537,7 +540,16 @@ export default function AdminDashboard() {
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                   <h3 className="font-bold text-green-900 mb-4">Classes</h3>
                   <div className="space-y-3">
-                    {classes.map(cls => (
+                    {classes.filter(cls => {
+                      // Filter out past classes (those with end_date before today)
+                      if (cls.end_date) {
+                        const endDate = new Date(cls.end_date);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return endDate >= today;
+                      }
+                      return true; // Keep classes without end_date
+                    }).map(cls => (
                       <div key={cls.id} className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">{cls.title.charAt(0)}</div>
                         <div className="flex-1 min-w-0">
@@ -583,8 +595,8 @@ export default function AdminDashboard() {
                       <div><label className="text-sm text-gray-500">End Time</label><select value={newClass.endTime} onChange={e => setNewClass({ ...newClass, endTime: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
                       <div><label className="text-sm text-gray-500">Start Date</label><input type="date" value={newClass.startDate} onChange={e => setNewClass({ ...newClass, startDate: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
                       <div><label className="text-sm text-gray-500">End Date</label><input type="date" value={newClass.endDate} onChange={e => setNewClass({ ...newClass, endDate: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
-                      <div><label className="text-sm text-gray-500">Max Students</label><input type="number" value={newClass.maxStudents} onChange={e => setNewClass({ ...newClass, maxStudents: parseInt(e.target.value) || 6 })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
-                      <div><label className="text-sm text-gray-500">Price</label><input type="number" value={newClass.price} onChange={e => setNewClass({ ...newClass, price: parseFloat(e.target.value) || 35 })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
+                      <div><label className="text-sm text-gray-500">Max Students</label><input type="number" min="1" value={newClass.maxStudents} onChange={e => setNewClass({ ...newClass, maxStudents: parseInt(e.target.value) || 1 })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
+                      <div><label className="text-sm text-gray-500">Price ($)</label><input type="number" min="0" step="0.01" value={newClass.price} onChange={e => setNewClass({ ...newClass, price: parseFloat(e.target.value) || 0 })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
                     </div>
                     <button type="submit" className="mt-4 w-full text-white bg-green-600 hover:bg-green-700 rounded-lg text-sm font-medium py-2">Add Class</button>
                   </form>
@@ -950,14 +962,26 @@ export default function AdminDashboard() {
                   <h3 className="font-bold text-green-900 mb-4">Add Block</h3>
                   <form onSubmit={async (e) => {
                     e.preventDefault();
+                    // Check for duplicate blocks
+                    const isDuplicate = scheduleBlocks.some(b =>
+                      b.day === newBlock.day &&
+                      b.start_time === newBlock.startTime &&
+                      b.end_time === newBlock.endTime &&
+                      b.block_type === newBlock.blockType
+                    );
+                    if (isDuplicate) {
+                      alert('This block already exists. Please modify the time or type to create a different block.');
+                      return;
+                    }
                     try {
                       const res = await api.createScheduleBlock({ day: newBlock.day, start_time: newBlock.startTime, end_time: newBlock.endTime, reason: newBlock.reason, block_type: newBlock.blockType });
                       setScheduleBlocks([...scheduleBlocks, res.data]);
-                      setNewBlock({ day: 'Monday', startTime: '12:00 PM', endTime: '1:00 PM', reason: 'Lunch break', blockType: 'lunch' });
+                      setNewBlock({ day: 'Monday', startTime: '12:00 PM', endTime: '1:00 PM', reason: 'Lunch break', blockType: 'lunch', date: '' });
                     } catch (err) { console.error(err); }
                   }}>
                     <div className="grid grid-cols-2 gap-4">
                       <div><label className="text-sm text-gray-500">Day</label><select value={newBlock.day} onChange={e => setNewBlock({ ...newBlock, day: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}<option value="all">Every Day</option></select></div>
+                      <div><label className="text-sm text-gray-500">Specific Date (optional)</label><input type="date" value={newBlock.date} onChange={e => setNewBlock({ ...newBlock, date: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" placeholder="Optional" /></div>
                       <div><label className="text-sm text-gray-500">Type</label><select value={newBlock.blockType} onChange={e => setNewBlock({ ...newBlock, blockType: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="lunch">Lunch Break</option><option value="closure">Closure</option><option value="delay">Delayed Opening</option><option value="maintenance">Maintenance</option></select></div>
                       <div><label className="text-sm text-gray-500">Start Time</label><select value={newBlock.startTime} onChange={e => setNewBlock({ ...newBlock, startTime: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
                       <div><label className="text-sm text-gray-500">End Time</label><select value={newBlock.endTime} onChange={e => setNewBlock({ ...newBlock, endTime: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
@@ -1008,10 +1032,43 @@ export default function AdminDashboard() {
                             try { await api.markChatRead(msg.id); setChatMessages(chatMessages.map(m => m.id === msg.id ? { ...m, read: true } : m)); } catch (err) { console.error(err); }
                           }} className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-lg hover:bg-green-200">Mark Read</button>
                         )}
+                        <button onClick={() => setReplyingTo(replyingTo === msg.id ? null : msg.id)} className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-lg hover:bg-blue-200">Reply</button>
                         <button onClick={async () => {
                           try { await api.deleteChatMessage(msg.id); setChatMessages(chatMessages.filter(m => m.id !== msg.id)); } catch (err) { console.error(err); }
                         }} className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-lg hover:bg-red-200"><Trash2 className="w-3 h-3 inline" /> Delete</button>
                       </div>
+                      {replyingTo === msg.id && (
+                        <div className="mt-3 ml-13 flex gap-2">
+                          <input type="text" value={replyMessage} onChange={e => setReplyMessage(e.target.value)} placeholder={`Reply to ${msg.name}...`} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:outline-none" onKeyDown={async (e) => {
+                            if (e.key === 'Enter' && replyMessage.trim()) {
+                              try {
+                                await fetch('/api/chat-messages', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ name: `Admin (${user?.name || 'Gina'})`, email: user?.email || '', message: `Re: ${replyMessage}`, reply_to: msg.id }),
+                                });
+                                setReplyMessage('');
+                                setReplyingTo(null);
+                                alert('Reply sent!');
+                              } catch (err) { console.error(err); }
+                            }
+                          }} />
+                          <button onClick={async () => {
+                            if (!replyMessage.trim()) return;
+                            try {
+                              await fetch('/api/chat-messages', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ name: `Admin (${user?.name || 'Gina'})`, email: user?.email || '', message: replyMessage, reply_to: msg.id }),
+                              });
+                              setReplyMessage('');
+                              setReplyingTo(null);
+                              alert('Reply sent!');
+                            } catch (err) { console.error(err); }
+                          }} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">Send</button>
+                          <button onClick={() => { setReplyingTo(null); setReplyMessage(''); }} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">Cancel</button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

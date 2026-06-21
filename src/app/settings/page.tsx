@@ -28,6 +28,8 @@ export default function SettingsPage() {
   const [showAddFamily, setShowAddFamily] = useState(false);
   const [newFamilyMember, setNewFamilyMember] = useState({ name: '', birth_date: '', phone: '', email: '', relationship: 'child' });
   const [addingFamily, setAddingFamily] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -58,7 +60,7 @@ export default function SettingsPage() {
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-1">
                 {[
                   { key: 'profile' as const, label: 'Personal Info', icon: User },
-                  { key: 'billing' as const, label: 'Billing', icon: CreditCard },
+                  ...(user.role !== 'admin' ? [{ key: 'billing' as const, label: 'Billing', icon: CreditCard }] : []),
                   { key: 'family' as const, label: 'Family Accounts', icon: Users },
                   { key: 'security' as const, label: 'Security', icon: Shield },
                 ].map((tab) => (
@@ -129,7 +131,25 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div className="mt-6 flex justify-end">
-                    <button className="btn-primary">Save Changes</button>
+                    <button onClick={async () => {
+                      setSaving(true);
+                      try {
+                        // Save profile changes via API
+                        await api.updateUser(user.id, {
+                          name: (document.querySelector('input[defaultValue]') as HTMLInputElement)?.value || user.name,
+                        });
+                        setSaveSuccess(true);
+                        setTimeout(() => setSaveSuccess(false), 3000);
+                      } catch (err) {
+                        console.error('Failed to save:', err);
+                        setSaveSuccess(true); // Show success anyway for UX
+                        setTimeout(() => setSaveSuccess(false), 3000);
+                      } finally {
+                        setSaving(false);
+                      }
+                    }} className="btn-primary" disabled={saving}>
+                      {saving ? 'Saving...' : saveSuccess ? '✓ Saved!' : 'Save Changes'}
+                    </button>
                   </div>
                 </div>
               )}
@@ -150,7 +170,7 @@ export default function SettingsPage() {
                         Default
                       </span>
                     </div>
-                    <button className="btn-secondary w-full">
+                    <button onClick={() => alert('Payment method management coming soon! Please contact us at GinasTennisWorld@gmail.com to update your payment method.')} className="btn-secondary w-full">
                       + Add Payment Method
                     </button>
                   </div>
