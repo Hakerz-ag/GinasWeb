@@ -52,7 +52,19 @@ logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
 # ── Rate limiter ────────────────────────────────────────────────────────────
-limiter = Limiter(key_func=get_remote_address)
+def _get_real_ip(request: Request) -> str:
+    """Get the real client IP from X-Forwarded-For header (behind reverse proxy).
+    
+    Render, Vercel, and other cloud providers put the real client IP in
+    X-Forwarded-For. Fall back to request.client.host if not available.
+    """
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        # X-Forwarded-For can be a comma-separated list; the first is the real client
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "127.0.0.1"
+
+limiter = Limiter(key_func=_get_real_ip)
 
 
 @asynccontextmanager
