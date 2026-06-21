@@ -1,5 +1,6 @@
 """Assessment router — 1-on-1 evaluation sessions with Gina."""
 
+import bleach
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List
@@ -9,6 +10,11 @@ from app.models import Assessment, User, SubAccount
 from app.schemas import AssessmentOut, AssessmentCreate, AssessmentUpdate, MessageResponse
 
 router = APIRouter()
+
+
+def _sanitize(text: str) -> str:
+    """Strip HTML tags and escape special characters to prevent XSS."""
+    return bleach.clean(text, tags=[], strip=True)
 
 
 @router.get("", response_model=List[AssessmentOut])
@@ -66,7 +72,7 @@ def update_assessment(assessment_id: str, body: AssessmentUpdate, db: Session = 
     if body.skill_level_assigned is not None:
         asm.skill_level_assigned = body.skill_level_assigned
     if body.notes is not None:
-        asm.notes = body.notes
+        asm.notes = _sanitize(body.notes)
 
     # If completing the assessment, update the user's skill level and mark assessment done
     if body.status == "completed" and body.skill_level_assigned:

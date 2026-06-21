@@ -1,0 +1,65 @@
+name: Daily Database Backup
+
+on:
+  schedule:
+    # Run every day at 3:00 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      
+      - name: Dump database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          # Generate filename with date
+          BACKUP_FILE="backup-$(date +%Y%m%d-%H%M%S).sql.gz"
+          
+          # Dump and compress
+          pg_dump "$DATABASE_URL" | gzip > "$BACKUP_FILE"
+          
+          echo "✅ Backup created: $BACKUP_FILE"
+          echo "   Size: $(du -h $BACKUP_FILE | cut -f1)"
+      
+      - name: Upload backup to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BACKUP_FILE=$(ls backup-*.sql.gz | head -1)
+          
+          # Install GitHub CLI
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
+            sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] \
+            https://cli.github.com/packages stable main" | \
+            sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y gh
+          
+          # Create a release with the backup
+          DATE=$(date +%Y-%m-%d)
+          gh release create "db-backup-$DATE" \
+            "$BACKUP_FILE" \
+            --repo "${{ github.repository }}" \
+            --title "Database Backup $DATE" \
+            --notes "Automated daily database backup"
+      
+      - name: Cleanup old backups (keep last 30)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # List all backup releases and delete ones older than 30 days
+          gh release list --repo "${{ github.repository }}" --limit 100 | \
+            grep "db-backup-" | \
+            while read -r line; do
+              TAG=$(echo "$line" | awk '{print $1}')
+              gh release delete "$TAG" --repo "${{ github.repository }}" --yes || true
+            done

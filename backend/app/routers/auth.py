@@ -1,7 +1,9 @@
 """Auth router — login and register."""
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from sqlalchemy.orm import Session
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.database import get_db
 from app.models import User
@@ -9,6 +11,7 @@ from app.schemas import LoginRequest, RegisterRequest, AuthResponse, UserOut, Su
 from app.services.auth import hash_password, verify_password, create_token
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 def _user_to_out(user: User, db: Session) -> UserOut:
@@ -50,7 +53,8 @@ def _user_to_out(user: User, db: Session) -> UserOut:
 
 
 @router.post("/login", response_model=AuthResponse)
-def login(body: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login(request: Request, body: LoginRequest, db: Session = Depends(get_db)):
     """Authenticate a user by email + password, return JWT token."""
     user = db.query(User).filter(User.email == body.email).first()
     if not user or not verify_password(body.password, user.password_hash):
@@ -64,7 +68,8 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/register", response_model=MessageResponse)
-def register(body: RegisterRequest, db: Session = Depends(get_db)):
+@limiter.limit("3/minute")
+def register(request: Request, body: RegisterRequest, db: Session = Depends(get_db)):
     """Register a new customer (pending admin approval)."""
     existing = db.query(User).filter(User.email == body.email).first()
     if existing:

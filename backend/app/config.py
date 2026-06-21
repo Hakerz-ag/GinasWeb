@@ -15,9 +15,11 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 1440  # 24 hours
 
     # CORS Origins (where the frontend runs)
+    # NEVER use ["*"] with allow_credentials=True
     allowed_origins: List[str] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "https://ginas-tennis-world-eta.vercel.app",
     ]
 
     # Database Configuration

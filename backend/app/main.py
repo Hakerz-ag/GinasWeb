@@ -1,10 +1,18 @@
 """FastAPI application entry point — Gina's Tennis World API."""
 
+import os
+import json as _json
+import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import get_settings
 from app.database import SessionLocal, init_db
@@ -14,11 +22,43 @@ from app.routers import notifications, payments, dashboard, realtime
 
 settings = get_settings()
 
+# ── Sentry error tracking ──────────────────────────────────────────────────
+if os.getenv("SENTRY_DSN"):
+    import sentry_sdk
+    sentry_sdk.init(
+        dsn=os.getenv("SENTRY_DSN"),
+        environment=settings.environment,
+        traces_sample_rate=0.1,
+    )
+
+# ── Structured JSON logging ─────────────────────────────────────────────────
+class JSONFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        log_entry = {
+            "level": record.levelname,
+            "message": record.getMessage(),
+            "module": record.module,
+            "timestamp": self.formatTime(record),
+        }
+        if record.exc_info and record.exc_info[0]:
+            log_entry["exception"] = self.formatException(record.exc_info)
+        return _json.dumps(log_entry)
+
+_handler = logging.StreamHandler()
+_handler.setFormatter(JSONFormatter())
+logging.getLogger().addHandler(_handler)
+logging.getLogger().setLevel(logging.INFO)
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+
+# ── Rate limiter ────────────────────────────────────────────────────────────
+limiter = Limiter(key_func=get_remote_address)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Startup: create tables and seed demo data."""
-    print("🚀 Starting Gina's Tennis World API...")
+    logging.info("Starting Gina's Tennis World API...")
     init_db()
     db = SessionLocal()
     try:
@@ -26,22 +66,44 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     finally:
         db.close()
     yield
-    print("👋 Shutting down...")
+    logging.info("Shutting down...")
 
 
+# ── Disable OpenAPI docs in production ──────────────────────────────────────
 app = FastAPI(
     title=settings.app_name,
     version="1.0.0",
     lifespan=lifespan,
+    docs_url="/docs" if settings.environment == "development" else None,
+    redoc_url="/redoc" if settings.environment == "development" else None,
+    openapi_url="/openapi.json" if settings.environment == "development" else None,
 )
 
-# CORS — allow the Next.js frontend
+# ── Rate limit error handler ────────────────────────────────────────────────
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ── Security headers middleware ──────────────────────────────────────────────
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
+
+# ── CORS — restrict to known origins (never wildcard with credentials) ──────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 

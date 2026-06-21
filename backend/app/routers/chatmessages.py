@@ -1,14 +1,24 @@
 """Chat messages router — handles messages from the floating chat widget."""
 
-from fastapi import APIRouter, HTTPException, Depends
+import html as _html
+from fastapi import APIRouter, HTTPException, Depends, Request
 from sqlalchemy.orm import Session
 from datetime import datetime
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.database import get_db
 from app.models import ChatMessage
 from app.schemas import ChatMessageOut, ChatMessageCreate, MessageResponse
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
+
+
+def _sanitize(text: str) -> str:
+    """Strip HTML tags and escape special characters to prevent XSS."""
+    import bleach
+    return bleach.clean(text, tags=[], strip=True)
 
 
 @router.get("", response_model=list[ChatMessageOut])
@@ -21,19 +31,21 @@ def list_messages(unread_only: bool = False, db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=ChatMessageOut)
-def create_message(body: ChatMessageCreate, db: Session = Depends(get_db)):
+@limiter.limit("1/minute")
+def create_message(request: Request, body: ChatMessageCreate, db: Session = Depends(get_db)):
     """Submit a new chat message from the website widget."""
     msg = ChatMessage(
-        name=body.name,
-        email=body.email,
-        message=body.message,
+        user_id=body.user_id,  # populated from auth token when available
+        name=_sanitize(body.name),
+        email=_sanitize(body.email),
+        message=_sanitize(body.message),
     )
     db.add(msg)
     db.commit()
     db.refresh(msg)
     return ChatMessageOut(
-        id=msg.id, name=msg.name, email=msg.email,
-        message=msg.message, read=msg.read,
+        id=msg.id, user_id=msg.user_id, name=msg.name, email=msg.email,
+        message=msg.message, read=msg.read, reply_to=msg.reply_to,
         created_at=msg.created_at,
     )
 
@@ -48,8 +60,8 @@ def mark_read(msg_id: str, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(msg)
     return ChatMessageOut(
-        id=msg.id, name=msg.name, email=msg.email,
-        message=msg.message, read=msg.read,
+        id=msg.id, user_id=msg.user_id, name=msg.name, email=msg.email,
+        message=msg.message, read=msg.read, reply_to=msg.reply_to,
         created_at=msg.created_at,
     )
 

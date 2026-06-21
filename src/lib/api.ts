@@ -139,10 +139,12 @@ export interface ScheduleBlockOut {
 
 export interface ChatMessageOut {
   id: string;
+  user_id?: string | null;
   name: string;
   email: string;
   message: string;
   read: boolean;
+  reply_to?: string | null;
   created_at: string | null;
 }
 

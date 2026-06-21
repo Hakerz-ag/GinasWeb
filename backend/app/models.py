@@ -119,6 +119,7 @@ class CourtBooking(Base):
     notes = Column(Text, default="")
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    deleted_at = Column(DateTime, nullable=True)  # soft-delete
 
     user = relationship("User", back_populates="bookings")
 
@@ -133,6 +134,7 @@ class ClassEnrollment(Base):
     class_id = Column(String, ForeignKey("class_sessions.id", ondelete="CASCADE"), nullable=False)
     status = Column(String, default="pending")  # "pending", "approved", "waitlisted", "active"
     enrolled_at = Column(DateTime, server_default=func.now())
+    deleted_at = Column(DateTime, nullable=True)  # soft-delete
 
     user = relationship("User", back_populates="enrollments")
     class_session = relationship("ClassSession", back_populates="enrollments")
@@ -161,6 +163,7 @@ class ScheduleBlock(Base):
     end_time = Column(String, nullable=False)     # "1:00 PM"
     reason = Column(String, default="")            # "Lunch break", "Maintenance", "Closed"
     block_type = Column(String, default="closure") # "closure", "delay", "lunch"
+    date = Column(String, nullable=True)           # Optional specific date "YYYY-MM-DD"
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -170,10 +173,12 @@ class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
     id = Column(String, primary_key=True, default=lambda: _generate_id("chat"))
+    user_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)  # nullable for guest messages
     name = Column(String, nullable=False)
     email = Column(String, nullable=False)
     message = Column(Text, nullable=False)
     read = Column(Boolean, default=False)
+    reply_to = Column(String, nullable=True)  # ID of message being replied to (admin replies)
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -207,13 +212,18 @@ class Payment(Base):
     status = Column(String, default="pending")  # "pending", "completed", "failed", "refunded"
     payment_type = Column(String, nullable=False)  # "class", "booking", "assessment"
     payment_method = Column(String, default="stripe")  # "stripe", "cash", "check", "venmo", "zelle", "pay_at_location"
-    related_id = Column(String, default="")  # ID of related booking/class/assessment
+    related_id = Column(String, default="")  # ID of related booking/class/assessment (legacy)
+    booking_id = Column(String, ForeignKey("court_bookings.id", ondelete="SET NULL"), nullable=True)  # explicit FK
+    enrollment_id = Column(String, ForeignKey("class_enrollments.id", ondelete="SET NULL"), nullable=True)  # explicit FK
     stripe_payment_intent_id = Column(String, default="")
     stripe_checkout_session_id = Column(String, default="")
     description = Column(String, default="")
     admin_notes = Column(Text, default="")  # Notes from Gina (e.g., "Received check #1234")
+    confirmed_by = Column(String, nullable=True)  # admin user_id who confirmed offline payment
+    confirmed_at = Column(DateTime, nullable=True)  # when the payment was confirmed
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    deleted_at = Column(DateTime, nullable=True)  # soft-delete
 
     user = relationship("User", back_populates="payments")
 

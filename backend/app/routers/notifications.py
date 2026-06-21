@@ -1,5 +1,6 @@
 """Notifications router — CRUD and real-time notification management."""
 
+import bleach
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 
@@ -8,6 +9,11 @@ from app.models import Notification
 from app.schemas import NotificationOut, NotificationCreate, NotificationUpdate, MessageResponse
 
 router = APIRouter()
+
+
+def _sanitize(text: str) -> str:
+    """Strip HTML tags and escape special characters to prevent XSS."""
+    return bleach.clean(text, tags=[], strip=True)
 
 
 @router.get("", response_model=list[NotificationOut])
@@ -44,8 +50,8 @@ def create_notification(body: NotificationCreate, db: Session = Depends(get_db))
     notif = Notification(
         user_id=body.user_id,
         type=body.type,
-        title=body.title,
-        message=body.message,
+        title=_sanitize(body.title),
+        message=_sanitize(body.message),
         action_url=body.action_url,
         related_id=body.related_id,
     )

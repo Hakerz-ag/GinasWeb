@@ -273,6 +273,7 @@ class ScheduleBlockOut(BaseModel):
     end_time: str
     reason: str = ""
     block_type: str = "closure"  # "closure", "delay", "lunch"
+    date: Optional[str] = None
 
 
 class ScheduleBlockCreate(BaseModel):
@@ -287,14 +288,17 @@ class ScheduleBlockCreate(BaseModel):
 
 class ChatMessageOut(BaseModel):
     id: str
+    user_id: Optional[str] = None
     name: str
     email: str
     message: str
     read: bool = False
+    reply_to: Optional[str] = None
     created_at: Optional[datetime] = None
 
 
 class ChatMessageCreate(BaseModel):
+    user_id: Optional[str] = None  # populated from auth token when available
     name: str
     email: str
     message: str
@@ -367,10 +371,14 @@ class PaymentOut(BaseModel):
     payment_type: str             # "class", "booking", "assessment"
     payment_method: str = "stripe"  # "stripe", "cash", "check", "venmo", "zelle", "pay_at_location"
     related_id: str = ""
+    booking_id: Optional[str] = None
+    enrollment_id: Optional[str] = None
     stripe_payment_intent_id: str = ""
     stripe_checkout_session_id: str = ""
     description: str = ""
     admin_notes: str = ""
+    confirmed_by: Optional[str] = None
+    confirmed_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -381,6 +389,8 @@ class PaymentCreate(BaseModel):
     payment_type: str   # "class", "booking", "assessment"
     payment_method: str = PAYMENT_METHOD_STRIPE  # defaults to stripe, can be any method
     related_id: str = ""
+    booking_id: Optional[str] = None
+    enrollment_id: Optional[str] = None
     description: str = ""
 
 
@@ -390,6 +400,7 @@ class PaymentUpdate(BaseModel):
     stripe_payment_intent_id: Optional[str] = None
     stripe_checkout_session_id: Optional[str] = None
     admin_notes: Optional[str] = None
+    confirmed_by: Optional[str] = None  # admin user_id who confirmed the payment
 
 
 class PaymentMethodConfig(BaseModel):
