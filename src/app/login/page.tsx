@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Shield } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
-  const { login, isAuthenticated, user } = useAuth();
+  const { login, isAuthenticated, user, mfaPending, verifyMFA } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,12 +17,84 @@ export default function LoginPage() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaError, setMfaError] = useState('');
+  const [mfaLoading, setMfaLoading] = useState(false);
 
   // Redirect if already logged in
   if (isAuthenticated && user) {
     const path = user.role === 'admin' ? '/admin' : '/customer';
-    router.push(path);
+    router.replace(path);
     return null;
+  }
+
+  // ── MFA verification step ──────────────────────────────────────────────
+  if (mfaPending) {
+    const handleMFAVerify = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setMfaError('');
+      setMfaLoading(true);
+
+      const verifiedUser = await verifyMFA(mfaCode);
+      if (verifiedUser) {
+        const path = verifiedUser.role === 'admin' ? '/admin' : '/customer';
+        router.push(path);
+      } else {
+        setMfaError('Invalid verification code. Please try again.');
+      }
+      setMfaLoading(false);
+    };
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-green-900 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-8 h-8 text-green-900" />
+            </div>
+            <h1 className="text-2xl font-bold text-white">Two-Factor Authentication</h1>
+            <p className="text-green-300 mt-1">Enter the 6-digit code from your authenticator app</p>
+          </div>
+
+          <div className="bg-white rounded-3xl shadow-2xl p-8">
+            {mfaError && (
+              <div className="bg-red-50 text-red-700 text-sm p-3 rounded-xl mb-4">{mfaError}</div>
+            )}
+
+            <form onSubmit={handleMFAVerify} className="space-y-5">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Verification Code
+                </label>
+                <input
+                  type="text"
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000000"
+                  maxLength={6}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  required
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none transition-colors text-center text-2xl tracking-[0.5em] font-mono"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Open your authenticator app (Google Authenticator, Authy, etc.) and enter the 6-digit code.
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={mfaLoading || mfaCode.length !== 6}
+                className="btn-primary w-full flex items-center justify-center gap-2"
+              >
+                {mfaLoading ? 'Verifying...' : 'Verify'}
+                {!mfaLoading && <ArrowRight className="w-4 h-4" />}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -30,33 +102,17 @@ export default function LoginPage() {
     setError('');
     setIsLoading(true);
 
-    const success = await login(email, password);
-    if (success) {
-      // AuthContext stores the user — redirect based on role
-      const path = email.includes('admin') || email.includes('gina') ? '/admin' : '/customer';
+    const loggedInUser = await login(email, password);
+    if (loggedInUser) {
+      // Use the returned user data directly — avoids race condition with React state
+      const path = loggedInUser.role === 'admin' ? '/admin' : '/customer';
       router.push(path);
     } else {
-      setError('Invalid credentials. Please try again.');
-    }
-    setIsLoading(false);
-  };
-
-  const quickLogin = async (role: 'customer' | 'admin') => {
-    const emails = {
-      customer: 'john@example.com',
-      admin: 'gina@ginastennisworld.com',
-    };
-    const passwords = {
-      customer: 'customer123',
-      admin: 'admin123',
-    };
-    setIsLoading(true);
-    setEmail(emails[role]);
-    setPassword(passwords[role]);
-    const success = await login(emails[role], passwords[role]);
-    if (success) {
-      const path = role === 'admin' ? '/admin' : '/customer';
-      router.push(path);
+      // If mfaPending was set, the MFA form will be shown automatically
+      // Only show error if it's not an MFA redirect
+      if (!mfaPending) {
+        setError('Invalid credentials. Please try again.');
+      }
     }
     setIsLoading(false);
   };
@@ -66,11 +122,11 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-full overflow-hidden mx-auto mb-4">
+          <div className="mx-auto mb-4">
             <img
-              src="/Logo.png"
+              src="/GTW Logo-2.jpg"
               alt="Gina's Tennis World"
-              className="w-full h-full object-cover"
+              className="h-20 w-auto mx-auto rounded-lg"
             />
           </div>
           <h1 className="text-2xl font-bold text-white">Welcome Back</h1>
@@ -180,25 +236,14 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Demo Quick Login */}
-        <div className="mt-6 bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-          <p className="text-green-200 text-sm text-center mb-4 font-medium">
-            🎾 Demo — Quick Login As:
+        {/* No demo credentials in production — users must register */}
+        <div className="mt-6 text-center">
+          <p className="text-green-200/60 text-xs">
+            🎒 New here?{' '}
+            <Link href="/register" className="text-yellow-400 hover:text-yellow-300 font-semibold">
+              Create an account
+            </Link>
           </p>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => quickLogin('customer')}
-              className="bg-white/20 hover:bg-yellow-500 hover:text-green-900 text-white font-semibold py-3 px-4 rounded-xl text-sm transition-all"
-            >
-              👤 Customer
-            </button>
-            <button
-              onClick={() => quickLogin('admin')}
-              className="bg-white/20 hover:bg-yellow-500 hover:text-green-900 text-white font-semibold py-3 px-4 rounded-xl text-sm transition-all"
-            >
-              ⚙️ Admin
-            </button>
-          </div>
         </div>
       </div>
     </div>

@@ -24,6 +24,7 @@ import {
   MessageCircle,
   MapPin,
   FileText,
+  Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -60,9 +61,10 @@ export default function AdminDashboard() {
   const [emailSent, setEmailSent] = useState(false);
   const [emailSendAll, setEmailSendAll] = useState(false);
   const [openTimeDay, setOpenTimeDay] = useState('Monday');
-  const [openTimeSlot, setOpenTimeSlot] = useState('');
+  const [openTimeStart, setOpenTimeStart] = useState('9:00 AM');
+  const [openTimeEnd, setOpenTimeEnd] = useState('10:00 AM');
   const [openTimeCourt, setOpenTimeCourt] = useState('1');
-  const [newClass, setNewClass] = useState({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', maxStudents: 6, price: 35, instructor: 'Wendy' });
+  const [newClass, setNewClass] = useState({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', season: '', maxStudents: 6, price: 35, instructor: 'Wendy' });
   const [skillDropdownOpen, setSkillDropdownOpen] = useState<string | null>(null);
   const [newBlock, setNewBlock] = useState({ day: 'Monday', startTime: '12:00 PM', endTime: '1:00 PM', reason: 'Lunch break', blockType: 'lunch', date: '' });
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -557,15 +559,28 @@ export default function AdminDashboard() {
                           <p className="text-sm text-gray-500">{cls.day_of_week} {cls.start_time} – {cls.end_time}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${SKILL_COLORS[cls.level] || 'bg-gray-100 text-gray-700'}`}>{cls.level}</span>
+                            {cls.season && <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-purple-100 text-purple-700">{cls.season}</span>}
                             {cls.start_date && <span className="text-[10px] text-gray-400">Starts: {new Date(cls.start_date).toLocaleDateString()}</span>}
                             {cls.end_date && <span className="text-[10px] text-gray-400">Ends: {new Date(cls.end_date).toLocaleDateString()}</span>}
                           </div>
                         </div>
-                        <button onClick={async () => {
-                          if (confirm(`Delete "${cls.title}"?`)) {
-                            try { await api.deleteClass(cls.id); setClasses(classes.filter(c => c.id !== cls.id)); } catch (err) { console.error(err); }
-                          }
-                        }} className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-lg hover:bg-red-200"><Trash2 className="w-3 h-3 inline" /> Delete</button>
+                        <div className="flex items-center gap-1">
+                          {cls.season && (
+                            <button onClick={async () => {
+                              if (confirm(`Renew "${cls.title}" to the next season? This will create a new class with shifted dates and copy all active enrollments.`)) {
+                                try {
+                                  const res = await api.renewClass(cls.id);
+                                  setClasses([...classes, res.data]);
+                                } catch (err) { console.error(err); }
+                              }
+                            }} className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-lg hover:bg-purple-200"><Sparkles className="w-3 h-3 inline" /> Renew</button>
+                          )}
+                          <button onClick={async () => {
+                            if (confirm(`Delete "${cls.title}"?`)) {
+                              try { await api.deleteClass(cls.id); setClasses(classes.filter(c => c.id !== cls.id)); } catch (err) { console.error(err); }
+                            }
+                          }} className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-lg hover:bg-red-200"><Trash2 className="w-3 h-3 inline" /> Delete</button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -578,11 +593,11 @@ export default function AdminDashboard() {
                       const res = await api.createClass({
                         title: newClass.title, instructor_name: newClass.instructor, type: newClass.type, level: newClass.level,
                         day_of_week: newClass.day, start_time: newClass.startTime, end_time: newClass.endTime,
-                        start_date: newClass.startDate, end_date: newClass.endDate,
+                        start_date: newClass.startDate, end_date: newClass.endDate, season: newClass.season || undefined,
                         max_students: newClass.maxStudents, price: newClass.price, description: '',
                       });
                       setClasses([...classes, res.data]);
-                      setNewClass({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', maxStudents: 6, price: 35, instructor: 'Wendy' });
+                      setNewClass({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', season: '', maxStudents: 6, price: 35, instructor: 'Wendy' });
                     } catch (err) { console.error(err); }
                   }}>
                     <div className="grid grid-cols-2 gap-4">
@@ -595,6 +610,7 @@ export default function AdminDashboard() {
                       <div><label className="text-sm text-gray-500">End Time</label><select value={newClass.endTime} onChange={e => setNewClass({ ...newClass, endTime: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
                       <div><label className="text-sm text-gray-500">Start Date</label><input type="date" value={newClass.startDate} onChange={e => setNewClass({ ...newClass, startDate: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
                       <div><label className="text-sm text-gray-500">End Date</label><input type="date" value={newClass.endDate} onChange={e => setNewClass({ ...newClass, endDate: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
+                      <div><label className="text-sm text-gray-500">Season</label><select value={newClass.season} onChange={e => setNewClass({ ...newClass, season: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="">No Season</option><option value="winter">❄️ Winter</option><option value="spring">🌸 Spring</option><option value="summer">☀️ Summer</option><option value="fall">🍂 Fall</option></select></div>
                       <div><label className="text-sm text-gray-500">Max Students</label><input type="number" min="1" value={newClass.maxStudents} onChange={e => setNewClass({ ...newClass, maxStudents: parseInt(e.target.value) || 1 })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
                       <div><label className="text-sm text-gray-500">Price ($)</label><input type="number" min="0" step="0.01" value={newClass.price} onChange={e => setNewClass({ ...newClass, price: parseFloat(e.target.value) || 0 })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
                     </div>
@@ -907,7 +923,7 @@ export default function AdminDashboard() {
                     {openTimes.map(ot => (
                       <div key={ot.id} className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">{ot.day.charAt(0)}</div>
-                        <div className="flex-1"><p className="font-semibold text-green-900">{ot.day}</p><p className="text-sm text-gray-500">{ot.time} — Court {ot.court}</p></div>
+                        <div className="flex-1"><p className="font-semibold text-green-900">{ot.day}</p><p className="text-sm text-gray-500">{ot.start_time} – {ot.end_time} — Court {ot.court}</p></div>
                         <button onClick={async () => { try { await api.deleteOpenTime(ot.id); setOpenTimes(openTimes.filter(x => x.id !== ot.id)); } catch (err) { console.error(err); } }} className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-lg hover:bg-red-200"><Trash2 className="w-3 h-3 inline" /> Remove</button>
                       </div>
                     ))}
@@ -917,11 +933,12 @@ export default function AdminDashboard() {
                   <h3 className="font-bold text-green-900 mb-4">Add Open Time</h3>
                   <form onSubmit={async (e) => {
                     e.preventDefault();
-                    try { const res = await api.addOpenTime({ day: openTimeDay, time: openTimeSlot, court: openTimeCourt }); setOpenTimes([...openTimes, res.data]); } catch (err) { console.error(err); }
+                    try { const res = await api.addOpenTime({ day: openTimeDay, start_time: openTimeStart, end_time: openTimeEnd, court: openTimeCourt }); setOpenTimes([...openTimes, res.data]); } catch (err) { console.error(err); }
                   }}>
                     <div className="grid grid-cols-2 gap-4">
                       <div><label className="text-sm text-gray-500">Day</label><select value={openTimeDay} onChange={e => setOpenTimeDay(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg">{daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
-                      <div><label className="text-sm text-gray-500">Time</label><select value={openTimeSlot} onChange={e => setOpenTimeSlot(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg">{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                      <div><label className="text-sm text-gray-500">Start Time</label><select value={openTimeStart} onChange={e => setOpenTimeStart(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg">{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                      <div><label className="text-sm text-gray-500">End Time</label><select value={openTimeEnd} onChange={e => setOpenTimeEnd(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg">{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
                       <div><label className="text-sm text-gray-500">Court</label><select value={openTimeCourt} onChange={e => setOpenTimeCourt(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg"><option value="1">Court 1</option><option value="2">Court 2</option><option value="3">Court 3</option></select></div>
                     </div>
                     <button type="submit" className="mt-4 w-full text-white bg-green-600 hover:bg-green-700 rounded-lg text-sm font-medium py-2">Add Open Time</button>

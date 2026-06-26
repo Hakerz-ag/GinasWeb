@@ -14,6 +14,7 @@ import {
   Users,
   BarChart3,
 } from 'lucide-react';
+import NotificationBadge from './NotificationBadge';
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -37,6 +38,7 @@ export default function Navbar() {
         ]
       : [
           { href: '/customer', label: 'Home', icon: null },
+          { href: '/about', label: 'About', icon: null },
           { href: '/videos', label: 'Videos', icon: null },
           { href: '/book', label: 'Book a Court', icon: null },
           { href: '/classes', label: 'Schedule a Class', icon: null },
@@ -44,6 +46,7 @@ export default function Navbar() {
         ]
     : [
         { href: '/', label: 'Home', icon: null },
+        { href: '/about', label: 'About', icon: null },
         { href: '/videos', label: 'Videos', icon: null },
         { href: '/book', label: 'Book a Court', icon: null },
         { href: '/classes', label: 'Schedule a Class', icon: null },
@@ -55,20 +58,12 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href={isAuthenticated ? dashboardPath : '/'} className="flex items-center gap-2 group">
+          <Link href={isAuthenticated ? dashboardPath : '/'} className="flex items-center group">
             <img
-              src="/Logo.png"
+              src="/GTW Logo-2.jpg"
               alt="Gina's Tennis World"
-              className="w-9 h-9 rounded-full object-cover group-hover:opacity-90 transition-opacity"
+              className="h-14 w-auto group-hover:opacity-90 transition-opacity"
             />
-            <div className="flex flex-col">
-              <span className="font-bold text-green-900 text-lg leading-tight">
-                Gina's Tennis World
-              </span>
-              <span className="text-[10px] text-green-600 font-medium tracking-wider uppercase -mt-0.5">
-                {isAuthenticated && role === 'admin' ? 'Admin Portal' : 'Indoor Tennis Club'}
-              </span>
-            </div>
           </Link>
 
           {/* Desktop Nav */}
@@ -86,6 +81,7 @@ export default function Navbar() {
 
           {/* Right side */}
           <div className="flex items-center gap-3">
+            <NotificationBadge />
             {isAuthenticated ? (
               <div className="relative">
                 <button

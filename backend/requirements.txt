@@ -28,4 +28,6 @@ sendgrid>=6.11.0
 # Security & rate limiting
 slowapi>=0.1.9
 bleach>=6.1.0
+pyotp>=2.9.0
+qrcode[pil]>=7.4
 sentry-sdk[fastapi]>=2.0.0

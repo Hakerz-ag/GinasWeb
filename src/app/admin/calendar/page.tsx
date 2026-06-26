@@ -25,7 +25,7 @@ const dayMap: Record<string, number> = { Sunday: 0, Monday: 1, Tuesday: 2, Wedne
 export default function AdminCalendarPage() {
   const { user, isAuthenticated, justLoggedOut, loading } = useAuth();
   const router = useRouter();
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 5, 1)); // June 2026
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [classes, setClasses] = useState<ClassOut[]>([]);
   const [bookings, setBookings] = useState<BookingOut[]>([]);

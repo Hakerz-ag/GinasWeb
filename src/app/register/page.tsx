@@ -29,7 +29,8 @@ export default function RegisterPage() {
         `${formData.firstName} ${formData.lastName}`,
         formData.email,
         formData.phone,
-        formData.password
+        formData.password,
+        formData.birth_date || undefined
       );
       setSubmitted(true);
     } catch (err) {
@@ -85,8 +86,8 @@ export default function RegisterPage() {
             Back
           </button>
           <div className="mt-4">
-            <div className="w-14 h-14 rounded-full overflow-hidden mx-auto mb-3">
-              <img src="/Logo.png" alt="Gina's Tennis World" className="w-full h-full object-cover" />
+            <div className="mx-auto mb-3">
+              <img src="/GTW Logo-2.jpg" alt="Gina's Tennis World" className="h-16 w-auto mx-auto rounded-lg" />
             </div>
             <h1 className="text-2xl font-bold text-white">Register</h1>
             <p className="text-green-300 mt-1">Join Gina's Tennis World — parents/guardians register first and add family members later</p>
@@ -144,7 +145,7 @@ export default function RegisterPage() {
                 <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none" placeholder="(908) 555-0123" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Date of Birth</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Date of Birth <span className="text-xs text-gray-400">(optional)</span></label>
                 <input type="date" value={formData.birth_date} onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })} className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none" />
               </div>
               <div className="pt-4 flex justify-end">

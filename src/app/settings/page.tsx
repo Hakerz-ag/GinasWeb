@@ -17,6 +17,7 @@ import {
   Plus,
   X,
   Trash2,
+  Check,
 } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
@@ -30,6 +31,14 @@ export default function SettingsPage() {
   const [addingFamily, setAddingFamily] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saving, setSaving] = useState(false);
+  // MFA state
+  const [mfaSetupData, setMfaSetupData] = useState<{ secret: string; uri: string; qr_code_data_url: string } | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaError, setMfaError] = useState('');
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [showDisableMfa, setShowDisableMfa] = useState(false);
+  const [disableMfaCode, setDisableMfaCode] = useState('');
+  const [disableMfaError, setDisableMfaError] = useState('');
 
   useEffect(() => {
     if (loading) return;
@@ -321,18 +330,172 @@ export default function SettingsPage() {
                     <div>
                       <h3 className="font-semibold text-green-900 mb-2">Multi-Factor Authentication</h3>
                       <p className="text-gray-600 text-sm mb-3">
-                        Add an extra layer of security to your account by enabling MFA.
+                        {user.totp_enabled
+                          ? 'MFA is enabled on your account. You will be asked for a verification code each time you sign in.'
+                          : 'Add an extra layer of security to your account by enabling MFA. You\'ll need an authenticator app like Google Authenticator or Authy.'}
                       </p>
-                      <div className="flex items-center justify-between bg-green-50 rounded-xl p-4">
-                        <div className="flex items-center gap-3">
-                          <Shield className="w-6 h-6 text-green-600" />
-                          <div>
-                            <p className="font-semibold text-green-900">MFA Status</p>
-                            <p className="text-sm text-gray-500">Not enabled</p>
+
+                      {/* ── MFA Enabled: Show status + disable option ── */}
+                      {user.totp_enabled && !showDisableMfa && (
+                        <div className="flex items-center justify-between bg-green-50 rounded-xl p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-green-200 rounded-full flex items-center justify-center">
+                              <Check className="w-5 h-5 text-green-700" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-green-900">MFA Enabled</p>
+                              <p className="text-sm text-gray-500">Your account is protected with two-factor authentication</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setShowDisableMfa(true)}
+                            className="text-red-600 text-sm font-medium hover:text-red-700"
+                          >
+                            Disable MFA
+                          </button>
+                        </div>
+                      )}
+
+                      {/* ── Disable MFA confirmation ── */}
+                      {user.totp_enabled && showDisableMfa && (
+                        <div className="bg-red-50 rounded-xl p-4">
+                          <p className="text-sm text-red-700 mb-3">
+                            Enter the 6-digit code from your authenticator app to disable MFA.
+                          </p>
+                          {disableMfaError && (
+                            <div className="bg-red-100 text-red-700 text-sm p-2 rounded-lg mb-3">{disableMfaError}</div>
+                          )}
+                          <div className="flex gap-3">
+                            <input
+                              type="text"
+                              value={disableMfaCode}
+                              onChange={(e) => setDisableMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                              placeholder="000000"
+                              maxLength={6}
+                              className="flex-1 px-4 py-2 border-2 border-red-200 rounded-xl focus:border-red-500 focus:outline-none text-center tracking-[0.3em] font-mono"
+                            />
+                            <button
+                              onClick={async () => {
+                                setDisableMfaError('');
+                                try {
+                                  await api.mfaDisable(disableMfaCode);
+                                  // Refresh user data
+                                  const res = await api.getUser(user.id);
+                                  localStorage.setItem('authUser', JSON.stringify(res.data));
+                                  window.location.reload();
+                                } catch (err: any) {
+                                  setDisableMfaError(err?.response?.data?.detail || 'Invalid code. Please try again.');
+                                }
+                              }}
+                              className="bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-red-700"
+                            >
+                              Confirm Disable
+                            </button>
+                            <button
+                              onClick={() => { setShowDisableMfa(false); setDisableMfaCode(''); setDisableMfaError(''); }}
+                              className="px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium"
+                            >
+                              Cancel
+                            </button>
                           </div>
                         </div>
-                        <button className="btn-primary text-sm py-2">Enable MFA</button>
-                      </div>
+                      )}
+
+                      {/* ── MFA Setup flow ── */}
+                      {!user.totp_enabled && !mfaSetupData && (
+                        <div className="flex items-center justify-between bg-yellow-50 rounded-xl p-4">
+                          <div className="flex items-center gap-3">
+                            <Shield className="w-6 h-6 text-yellow-600" />
+                            <div>
+                              <p className="font-semibold text-green-900">MFA Status</p>
+                              <p className="text-sm text-gray-500">Not enabled</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              setMfaLoading(true);
+                              setMfaError('');
+                              try {
+                                const res = await api.mfaSetup();
+                                setMfaSetupData(res.data);
+                              } catch (err) {
+                                setMfaError('Failed to start MFA setup. Please try again.');
+                              } finally {
+                                setMfaLoading(false);
+                              }
+                            }}
+                            disabled={mfaLoading}
+                            className="btn-primary text-sm py-2"
+                          >
+                            {mfaLoading ? 'Setting up...' : 'Enable MFA'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* ── Show QR code for MFA setup ── */}
+                      {!user.totp_enabled && mfaSetupData && (
+                        <div className="bg-white border-2 border-green-200 rounded-xl p-6">
+                          <h4 className="font-bold text-green-900 mb-2">Step 1: Scan QR Code</h4>
+                          <p className="text-sm text-gray-600 mb-4">
+                            Open your authenticator app (Google Authenticator, Authy, 1Password, etc.) and scan this QR code.
+                          </p>
+                          <div className="flex justify-center mb-4">
+                            <img
+                              src={mfaSetupData.qr_code_data_url}
+                              alt="MFA QR Code"
+                              className="w-48 h-48 rounded-lg border border-gray-200"
+                            />
+                          </div>
+                          <p className="text-xs text-gray-500 text-center mb-4">
+                            Can&apos;t scan? Enter this code manually: <code className="bg-gray-100 px-2 py-0.5 rounded font-mono">{mfaSetupData.secret}</code>
+                          </p>
+
+                          <h4 className="font-bold text-green-900 mb-2">Step 2: Enter Verification Code</h4>
+                          <p className="text-sm text-gray-600 mb-3">
+                            Enter the 6-digit code from your authenticator app to confirm MFA is working.
+                          </p>
+                          {mfaError && (
+                            <div className="bg-red-50 text-red-700 text-sm p-2 rounded-lg mb-3">{mfaError}</div>
+                          )}
+                          <div className="flex gap-3">
+                            <input
+                              type="text"
+                              value={mfaCode}
+                              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                              placeholder="000000"
+                              maxLength={6}
+                              className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none text-center tracking-[0.3em] font-mono"
+                            />
+                            <button
+                              onClick={async () => {
+                                setMfaLoading(true);
+                                setMfaError('');
+                                try {
+                                  await api.mfaVerifySetup(mfaCode);
+                                  // Refresh user data
+                                  const res = await api.getUser(user.id);
+                                  localStorage.setItem('authUser', JSON.stringify(res.data));
+                                  window.location.reload();
+                                } catch (err: any) {
+                                  setMfaError(err?.response?.data?.detail || 'Invalid code. Please try again.');
+                                } finally {
+                                  setMfaLoading(false);
+                                }
+                              }}
+                              disabled={mfaLoading || mfaCode.length !== 6}
+                              className="btn-primary text-sm py-2"
+                            >
+                              {mfaLoading ? 'Verifying...' : 'Verify & Enable'}
+                            </button>
+                          </div>
+                          <button
+                            onClick={() => { setMfaSetupData(null); setMfaCode(''); setMfaError(''); }}
+                            className="text-sm text-gray-500 hover:text-gray-700 mt-3 block"
+                          >
+                            Cancel setup
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <hr />

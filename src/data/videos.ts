@@ -1,49 +1,45 @@
-// Video data scraped from Gina's Tennis World
+// Video data for Gina's Tennis World
+// All videos are served via YouTube embeds — much lighter on Vercel than hosting MP4s
 // YouTube channel: https://www.youtube.com/channel/UCvqyp7DVOLqAAbHzKkx6Z0Q
-// Intro and Featured videos are local uploads provided by Gina
-// All instructional videos are real YouTube videos from Gina's channel
 
 export interface Video {
   id: string;
   title: string;
   description: string;
-  youtubeId?: string;
-  localVideo?: string;
+  youtubeId: string;
   thumbnail: string;
   category: 'intro' | 'featured' | 'instructional';
   duration?: string;
 }
 
 export const videos: Video[] = [
-  // === INTRO (local video uploads) ===
+  // === INTRO ===
   {
     id: 'v1',
-    title: 'Introductory Video',
+    title: 'Welcome to Gina\'s Tennis World',
     description: 'Gina warmly welcomes new guests and introduces everything the club has to offer — indoor courts, clinics, the ACE Attack system, and more. A must-watch for first-time visitors!',
-    localVideo: '/videos/introductory-video-d3.mp4',
-    thumbnail: '/videos/introductory-video-d3.mp4#t=1',
+    youtubeId: 'QPgkCslXxng',
+    thumbnail: 'https://img.youtube.com/vi/QPgkCslXxng/maxresdefault.jpg',
     category: 'intro',
   },
 
-  // === FEATURED (local video uploads) ===
+  // === FEATURED ===
   {
     id: 'v2',
     title: 'Day in the Life at Gina\'s Tennis World',
     description: 'Experience a day at Gina\'s Tennis World! See what makes this club special — from morning clinics to evening matches, get an inside look at the energy and community.',
-    localVideo: '/videos/day-in-the-life-d2.mp4',
-    thumbnail: '/videos/day-in-the-life-d2.mp4#t=1',
+    youtubeId: 'nmdvn33SYG0',
+    thumbnail: 'https://img.youtube.com/vi/nmdvn33SYG0/maxresdefault.jpg',
     category: 'featured',
   },
   {
     id: 'v3',
     title: 'The ACE Attack!',
     description: 'The ACE Attack system is exclusive to Gina\'s Tennis World — the first and only one in New Jersey! Watch this video to see how it transforms your training and game.',
-    localVideo: '/videos/the-ace-attack.mp4',
-    thumbnail: '/videos/the-ace-attack.mp4#t=1',
+    youtubeId: '2Eko0jiTFkY',
+    thumbnail: 'https://img.youtube.com/vi/2Eko0jiTFkY/maxresdefault.jpg',
     category: 'featured',
   },
-
-  // === INSTRUCTIONAL (YouTube videos from Gina's channel) ===
   {
     id: 'v4',
     title: 'Use Your Legs',
@@ -60,6 +56,8 @@ export const videos: Video[] = [
     thumbnail: 'https://img.youtube.com/vi/nmdvn33SYG0/maxresdefault.jpg',
     category: 'featured',
   },
+
+  // === INSTRUCTIONAL ===
   {
     id: 'v6',
     title: 'Watch The Ball',

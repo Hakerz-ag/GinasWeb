@@ -29,6 +29,95 @@ axiosInstance.interceptors.request.use((config) => {
   return config;
 });
 
+// ── Auto-refresh on 401 (token expired) ────────────────────────────────────
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (value: unknown) => void; reject: (reason?: unknown) => void }> = [];
+
+function processQueue(error: unknown) {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(undefined);
+    }
+  });
+  failedQueue = [];
+}
+
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If the error is 401 and we haven't already tried to refresh
+    if (error?.response?.status === 401 && !originalRequest._retry) {
+      // Don't try to refresh for login/register/refresh endpoints
+      const url = originalRequest.url || "";
+      if (url.includes("/auth/login") || url.includes("/auth/register") || url.includes("/auth/refresh") || url.includes("/auth/forgot-password") || url.includes("/auth/reset-password")) {
+        return Promise.reject(error);
+      }
+
+      const refreshToken = localStorage.getItem("refreshToken");
+
+      if (!refreshToken) {
+        // No refresh token — clear auth and redirect to login
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("authUser");
+        if (typeof window !== "undefined" && window.location.pathname !== "/login" && window.location.pathname !== "/register") {
+          window.location.href = "/login";
+        }
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        // Queue up requests while we're refreshing
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(() => {
+          // Re-try the original request with the new token
+          originalRequest.headers.Authorization = `Bearer ${localStorage.getItem("authToken")}`;
+          return axiosInstance(originalRequest);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const response = await axios.post("/api/auth/refresh", { refresh_token: refreshToken });
+        const { access_token, refresh_token: newRefreshToken, user: userData } = response.data;
+
+        // Store the new tokens
+        localStorage.setItem("authToken", access_token);
+        localStorage.setItem("refreshToken", newRefreshToken);
+        localStorage.setItem("authUser", JSON.stringify(userData));
+
+        // Update the authorization header for the original request
+        originalRequest.headers.Authorization = `Bearer ${access_token}`;
+
+        // Process any queued requests
+        processQueue(null);
+
+        return axiosInstance(originalRequest);
+      } catch (refreshError) {
+        // Refresh failed — clear everything and redirect to login
+        processQueue(refreshError);
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("authUser");
+        if (typeof window !== "undefined" && window.location.pathname !== "/login" && window.location.pathname !== "/register") {
+          window.location.href = "/login";
+        }
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 // ── Types ───────────────────────────────────────────────────────────────────
 export interface UserOut {
   id: string;
@@ -41,6 +130,7 @@ export interface UserOut {
   assessment_completed: boolean;
   sessions_taken: number;
   status: string;
+  totp_enabled: boolean;     // Whether MFA is enabled for this user
   created_at: string | null;
   sub_accounts: SubAccountOut[];
   classes: string[];
@@ -87,6 +177,7 @@ export interface ClassOut {
   current_students: number;
   price: number;
   description: string;
+  season: string;
 }
 
 export interface BookingOut {
@@ -107,14 +198,27 @@ export interface BookingOut {
 export interface OpenTimeOut {
   id: string;
   day: string;
-  time: string;
+  start_time: string;
+  end_time: string;
   court: string;
   status: string;
+}
+
+export interface EnrollmentOut {
+  id: string;
+  user_id: string;
+  class_id: string;
+  sub_account_id: string | null;
+  status: string;
+  enrolled_at: string | null;
 }
 
 export interface AuthResponse {
   user: UserOut;
   token: string;
+  refresh_token?: string;
+  mfa_required?: boolean;
+  mfa_temp_token?: string;
 }
 
 export interface MessageResponse {
@@ -160,6 +264,24 @@ export interface NotificationOut {
   created_at: string | null;
 }
 
+// Minimal PaymentPlan types for frontend usage
+export interface InstallmentOut {
+  id: string;
+  due_date?: string;
+  amount: number;
+  status: string;
+  payment_id?: string;
+}
+
+export interface PaymentPlanOut {
+  id: string;
+  user_id: string;
+  total_amount: number;
+  plan_type: string;
+  installments: InstallmentOut[];
+  created_at?: string | null;
+}
+
 export interface PaymentOut {
   id: string;
   user_id: string;
@@ -181,6 +303,7 @@ export interface PaymentMethodOption {
   id: string;       // "stripe", "cash", "check", "venmo", "zelle", "pay_at_location"
   label: string;    // "Credit/Debit Card (Stripe)", "Cash", etc.
   enabled: boolean;
+  reservation_only?: boolean;
 }
 
 export interface PaymentMethodsResponse {
@@ -220,8 +343,20 @@ export const api = {
   login: (email: string, password: string) =>
     axiosInstance.post<AuthResponse>("/auth/login", { email, password }),
 
-  register: (name: string, email: string, phone: string, password: string) =>
-    axiosInstance.post<MessageResponse>("/auth/register", { name, email, phone, password }),
+  register: (name: string, email: string, phone: string, password: string, birth_date?: string) =>
+    axiosInstance.post<MessageResponse>("/auth/register", { name, email, phone, password, birth_date }),
+
+  refreshToken: (refreshToken: string) =>
+    axiosInstance.post<{ user: UserOut; access_token: string; refresh_token: string }>("/auth/refresh", { refresh_token: refreshToken }),
+
+  logout: (refreshToken: string) =>
+    axiosInstance.post<MessageResponse>("/auth/logout", { refresh_token: refreshToken }),
+
+  forgotPassword: (email: string) =>
+    axiosInstance.post<MessageResponse>("/auth/forgot-password", { email }),
+
+  resetPassword: (email: string, token: string, newPassword: string) =>
+    axiosInstance.post<MessageResponse>("/auth/reset-password", { email, token, new_password: newPassword }),
 
   // ── Users ──────────────────────────────────────────────────────────────
   getUsers: (role?: string) =>
@@ -246,7 +381,7 @@ export const api = {
     axiosInstance.delete<MessageResponse>(`/users/${userId}/sub-accounts/${subId}`),
 
   // ── Classes ────────────────────────────────────────────────────────────
-  getClasses: (filters?: { level?: string; type?: string }) =>
+  getClasses: (filters?: { level?: string; type?: string; season?: string }) =>
     axiosInstance.get<ClassOut[]>("/classes", { params: filters }),
 
   getClass: (classId: string) =>
@@ -255,7 +390,7 @@ export const api = {
   createClass: (data: {
     title: string; instructor_name: string; type: string; level: string;
     day_of_week: string; start_time: string; end_time: string;
-    start_date: string; end_date: string;
+    start_date: string; end_date: string; season?: string;
     max_students: number; price: number; description: string;
   }) => axiosInstance.post<ClassOut>("/classes", data),
 
@@ -265,8 +400,25 @@ export const api = {
   deleteClass: (classId: string) =>
     axiosInstance.delete<MessageResponse>(`/classes/${classId}`),
 
-  enrollInClass: (userId: string, classId: string) =>
-    axiosInstance.post("/classes/enroll", { user_id: userId, class_id: classId }),
+  enrollInClass: (userId: string, classId: string, subAccountId?: string) =>
+    axiosInstance.post<EnrollmentOut>("/classes/enroll", {
+      user_id: userId,
+      class_id: classId,
+      sub_account_id: subAccountId || null,
+    }),
+
+  bulkEnrollInClass: (userId: string, classId: string, subAccountIds: string[]) =>
+    axiosInstance.post<EnrollmentOut[]>("/classes/enroll/bulk", {
+      user_id: userId,
+      class_id: classId,
+      sub_account_ids: subAccountIds,
+    }),
+
+  renewClass: (classId: string) =>
+    axiosInstance.post<ClassOut>(`/classes/renew/${classId}`),
+
+  getEnrollments: (filters?: { user_id?: string; class_id?: string }) =>
+    axiosInstance.get<EnrollmentOut[]>("/classes/enrollments", { params: filters }),
 
   unenroll: (enrollmentId: string) =>
     axiosInstance.delete<MessageResponse>(`/classes/enroll/${enrollmentId}`),
@@ -294,7 +446,7 @@ export const api = {
   getOpenTimes: () =>
     axiosInstance.get<OpenTimeOut[]>("/opentimes"),
 
-  addOpenTime: (data: { day: string; time: string; court: string }) =>
+  addOpenTime: (data: { day: string; start_time: string; end_time: string; court: string }) =>
     axiosInstance.post<OpenTimeOut>("/opentimes", data),
 
   deleteOpenTime: (otId: string) =>
@@ -367,6 +519,10 @@ export const api = {
   deleteNotification: (notificationId: string) =>
     axiosInstance.delete<MessageResponse>(`/notifications/${notificationId}`),
 
+  // Send SMS via backend (Twilio if configured)
+  sendSms: (phone: string, message: string) =>
+    axiosInstance.post<{ sent: boolean; detail: string }>("/notifications/send-sms", null, { params: { phone, message } }),
+
   // ── Payments ───────────────────────────────────────────────────────────
   getPaymentMethods: () =>
     axiosInstance.get<PaymentMethodsResponse>("/payments/methods"),
@@ -386,6 +542,29 @@ export const api = {
 
   getPaymentStats: () =>
     axiosInstance.get<PaymentStats>("/payments/stats"),
+
+  // Payment plans
+  createPaymentPlan: (data: { user_id: string; total_amount: number; plan_type: string; booking_id?: string; enrollment_id?: string }) =>
+    axiosInstance.post<PaymentPlanOut>("/payment-plans", data),
+  getPaymentPlan: (planId: string) =>
+    axiosInstance.get<PaymentPlanOut>(`/payment-plans/${planId}`),
+
+  // ── Contact Form ───────────────────────────────────────────────────────
+  submitContactForm: (data: { name: string; email: string; phone: string; subject: string; message: string }) =>
+    axiosInstance.post<{ success: boolean; message: string }>("/contact", data),
+
+  // ── MFA (Multi-Factor Authentication) ──────────────────────────────────
+  mfaSetup: () =>
+    axiosInstance.post<{ secret: string; uri: string; qr_code_data_url: string }>("/auth/mfa/setup"),
+
+  mfaVerifySetup: (code: string) =>
+    axiosInstance.post<{ user: UserOut; token: string }>("/auth/mfa/verify-setup", null, { params: { code } }),
+
+  mfaVerifyLogin: (code: string, tempToken: string) =>
+    axiosInstance.post<{ user: UserOut; token: string }>("/auth/mfa/verify", { code, temp_token: tempToken }),
+
+  mfaDisable: (code: string) =>
+    axiosInstance.post<{ message: string }>("/auth/mfa/disable", null, { params: { code } }),
 
   // ── Dashboard ─────────────────────────────────────────────────────────
   getDashboardStats: () =>

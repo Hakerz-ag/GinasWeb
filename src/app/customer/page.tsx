@@ -33,7 +33,7 @@ export default function CustomerDashboard() {
   const { user, isAuthenticated, justLoggedOut, loading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'learn' | 'book' | 'schedule'>('learn');
-  const [calendarDate, setCalendarDate] = useState(new Date(2026, 5, 1)); // June 2026
+  const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [classes, setClasses] = useState<ClassOut[]>([]);
   const [bookings, setBookings] = useState<BookingOut[]>([]);
@@ -216,20 +216,11 @@ export default function CustomerDashboard() {
                 {videos.slice(0, 6).map((video) => (
                   <Link key={video.id} href="/videos" className="card overflow-hidden group cursor-pointer">
                     <div className="relative aspect-video">
-                      {video.localVideo ? (
-                        <video
-                          src={video.localVideo}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          muted
-                          preload="metadata"
-                        />
-                      ) : (
                         <img
                           src={video.thumbnail}
                           alt={video.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
-                      )}
                       <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                         <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
                           <Play className="w-5 h-5 text-green-900 ml-0.5" fill="currentColor" />

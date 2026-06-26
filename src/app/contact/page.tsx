@@ -2,11 +2,15 @@
 
 import LayoutShell from '@/components/LayoutShell';
 import { clubInfo } from '@/data/staff';
-import { MapPin, Phone, Mail, Clock, Send } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, Send, Loader2 } from 'lucide-react';
 import { useState } from 'react';
+import { api } from '@/lib/api';
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
 
   return (
     <LayoutShell>
@@ -104,16 +108,31 @@ export default function ContactPage() {
                   <p className="text-gray-600 mb-4">
                     Thank you for reaching out. We&apos;ll get back to you shortly.
                   </p>
-                  <button onClick={() => setSubmitted(false)} className="btn-primary">
+                  <button onClick={() => { setSubmitted(false); setForm({ name: '', email: '', phone: '', subject: '', message: '' }); }} className="btn-primary">
                     Send Another Message
                   </button>
                 </div>
               ) : (
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                  {error && (
+                    <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3">
+                      <p className="text-sm text-red-700">{error}</p>
+                    </div>
+                  )}
                   <form
-                    onSubmit={(e) => {
+                    onSubmit={async (e) => {
                       e.preventDefault();
-                      setSubmitted(true);
+                      setSubmitting(true);
+                      setError(null);
+                      try {
+                        await api.submitContactForm(form);
+                        setSubmitted(true);
+                      } catch (err: any) {
+                        const detail = err?.response?.data?.detail || err?.response?.data?.message || 'Failed to send message. Please try again or call us directly.';
+                        setError(detail);
+                      } finally {
+                        setSubmitting(false);
+                      }
                     }}
                     className="space-y-4"
                   >
@@ -123,6 +142,8 @@ export default function ContactPage() {
                         <input
                           type="text"
                           required
+                          value={form.name}
+                          onChange={(e) => setForm({ ...form, name: e.target.value })}
                           className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none"
                           placeholder="Your name"
                         />
@@ -131,6 +152,8 @@ export default function ContactPage() {
                         <label className="block text-sm font-semibold text-gray-700 mb-1">Phone</label>
                         <input
                           type="tel"
+                          value={form.phone}
+                          onChange={(e) => setForm({ ...form, phone: e.target.value })}
                           className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none"
                           placeholder="(908) 555-0123"
                         />
@@ -141,6 +164,8 @@ export default function ContactPage() {
                       <input
                         type="email"
                         required
+                        value={form.email}
+                        onChange={(e) => setForm({ ...form, email: e.target.value })}
                         className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none"
                         placeholder="you@example.com"
                       />
@@ -149,15 +174,17 @@ export default function ContactPage() {
                       <label className="block text-sm font-semibold text-gray-700 mb-1">Subject *</label>
                       <select
                         required
+                        value={form.subject}
+                        onChange={(e) => setForm({ ...form, subject: e.target.value })}
                         className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none"
                       >
                         <option value="">Select a subject</option>
-                        <option value="clinic">Clinic Information</option>
-                        <option value="court">Court Rental</option>
-                        <option value="private">Private Lessons</option>
-                        <option value="contract">Contract Time</option>
-                        <option value="party">Party/Event Booking</option>
-                        <option value="other">Other</option>
+                        <option value="Clinic Information">Clinic Information</option>
+                        <option value="Court Rental">Court Rental</option>
+                        <option value="Private Lessons">Private Lessons</option>
+                        <option value="Contract Time">Contract Time</option>
+                        <option value="Party/Event Booking">Party/Event Booking</option>
+                        <option value="Other">Other</option>
                       </select>
                     </div>
                     <div>
@@ -165,13 +192,23 @@ export default function ContactPage() {
                       <textarea
                         required
                         rows={4}
+                        value={form.message}
+                        onChange={(e) => setForm({ ...form, message: e.target.value })}
                         className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none resize-none"
                         placeholder="How can we help you?"
                       />
                     </div>
-                    <button type="submit" className="btn-primary w-full">
-                      <Send className="w-4 h-4 inline mr-2" />
-                      Send Message
+                    <button type="submit" disabled={submitting} className={`btn-primary w-full ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      {submitting ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin" /> Sending...
+                        </span>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 inline mr-2" />
+                          Send Message
+                        </>
+                      )}
                     </button>
                   </form>
                 </div>

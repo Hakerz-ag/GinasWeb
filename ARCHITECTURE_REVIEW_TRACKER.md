@@ -1,7 +1,7 @@
 # Architecture Review Report — Fix Tracker
 
 > **Source:** Gina's Tennis World — Architecture Review Report (Prism AI, June 21, 2026)  
-> **Last Updated:** June 21, 2026
+> **Last Updated:** June 26, 2026
 
 ---
 
@@ -12,8 +12,8 @@
 | 1 | **No rate limiting on `/auth/login` and `/auth/register`** | ✅ FIXED | Added `slowapi` rate limiting: 5/min on login, 3/min on register, 1/min on chat messages |
 | 2 | **FastAPI OpenAPI docs exposed in production** | ✅ FIXED | `/docs`, `/redoc`, `/openapi.json` disabled when `ENVIRONMENT=production` |
 | 3 | **No database backup strategy** | ✅ FIXED | Created `.github/workflows/backup.yml` — daily `pg_dump` uploaded as GitHub Release |
-| 4 | **JWT tokens with no refresh mechanism or revocation** | 🔴 NOT DONE | Still using 24h tokens with no refresh/revocation. Needs: short-lived access tokens (15 min) + refresh tokens (7 days) stored in DB |
-| 5 | **Admin accounts have no MFA** | 🔴 NOT DONE | Needs TOTP-based MFA (`pyotp`) for admin login. Requires: `totp_secret` column on users table, OTP verification on admin login |
+| 4 | **JWT tokens with no refresh mechanism or revocation** | ✅ FIXED | Implemented short-lived access tokens (15 min) + refresh tokens (7 days) stored in DB. Refresh token rotation prevents reuse. Logout revokes refresh token. Password reset revokes all tokens. |
+| 5 | **Admin accounts have no MFA** | ✅ FIXED | TOTP-based MFA implemented using `pyotp`. All users can enable MFA in Settings. Login requires 6-digit code when MFA is enabled. QR code generated for authenticator apps. |
 | 6 | **CORS misconfiguration risk** | ✅ FIXED | Restricted `allow_methods` to specific verbs, `allow_headers` to `Authorization` + `Content-Type`, added production domain to `allowed_origins` |
 | 7 | **No HTTP security headers** | ✅ FIXED | Added `SecurityHeadersMiddleware` to FastAPI + security headers in `next.config.js` (X-Frame-Options, HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy) |
 
@@ -24,8 +24,8 @@
 | # | Issue | Status | Details |
 |---|-------|--------|---------|
 | 8 | **No Sentry/error tracking** | ✅ FIXED | Added `sentry-sdk[fastapi]` to requirements, initializes from `SENTRY_DSN` env var |
-| 9 | **Admin MFA with TOTP** | 🔴 NOT DONE | Same as #5 above — needs `pyotp` implementation |
-| 10 | **JWT refresh token implementation** | 🔴 NOT DONE | Same as #4 above — needs full token architecture rewrite |
+| 9 | **Admin MFA with TOTP** | ✅ FIXED | TOTP-based MFA using `pyotp` + `qrcode`. Setup via Settings page, QR code for authenticator apps, 6-digit verification on login. |
+| 10 | **JWT refresh token implementation** | ✅ FIXED | Same as #4 — implemented refresh token rotation with DB-backed revocation, 15-min access tokens, 7-day refresh tokens |
 | 11 | **Missing DB indexes on FK columns** | ✅ FIXED | Added 11 indexes via Alembic migration `002_security_and_schema.py` (bookings, payments, enrollments, assessments, notifications, sub_accounts) |
 | 12 | **Payment audit log** | ✅ FIXED | Added `confirmed_by` and `confirmed_at` columns to payments table |
 | 13 | **Ambiguous `related_id` in payments** | ✅ FIXED | Added explicit `booking_id` and `enrollment_id` FK columns to payments table (kept `related_id` for backward compat) |
@@ -35,7 +35,7 @@
 | 17 | **Anonymous chat_messages — no user linkage** | ✅ FIXED | Added nullable `user_id` FK to `chat_messages` table + `reply_to` column |
 | 18 | **Stored XSS risk in free-text fields** | ✅ FIXED | Added `bleach.clean()` sanitization on chat messages, assessments notes, and notifications |
 | 19 | **SMTP TLS/DNS records unknown** | 🔴 NOT DONE | Needs: SPF, DKIM, DMARC DNS records configured. Consider switching to SendGrid/Resend |
-| 20 | **JWT_SECRET rotation plan missing** | 🔴 NOT DONE | Needs: key versioning with `kid` header, maintain current + 1 previous key |
+| 20 | **JWT_SECRET rotation plan missing** | ✅ FIXED | Implemented key versioning with `kid` header. `JWT_SECRET` is current key (kid="1"), `JWT_SECRET_PREV` is previous key (kid="0"). Tokens signed with old key remain valid until they expire. |
 
 ---
 
@@ -49,13 +49,13 @@
 | 24 | **Redis caching for class schedules** | 🔴 NOT DONE | Needs: Upstash Redis integration, cache class listings (TTL: 5 min), available slots (TTL: 1 min) |
 | 25 | **SPF/DKIM/DMARC DNS records** | 🔴 NOT DONE | Same as #19 — DNS configuration needed |
 | 26 | **Refund workflow & receipt generation** | 🔴 NOT DONE | Needs: `/refunds` endpoint, Stripe refund API integration, PDF/HTML receipt generation |
-| 27 | **GDPR data deletion for sub_accounts** | 🔴 NOT DONE | Needs: documented deletion procedure, cascade delete from users to sub_accounts, per-user encryption for `birth_date` |
-| 28 | **Move video assets to CDN** | 🔴 NOT DONE | Needs: Cloudflare R2 or Bunny CDN setup, update video URLs in `src/data/videos.ts` |
+| 27 | **GDPR data deletion for sub_accounts** | ✅ FIXED | Added `DELETE /users/me/data` endpoint that cascades deletion: soft-deletes bookings/payments/enrollments, deletes notifications, anonymizes chat messages, deletes sub-accounts and user |
+| 28 | **Move video assets to CDN** | ✅ FIXED | All videos converted to YouTube embeds (1.1GB of local MP4s removed). No local video files served through Vercel. |
 | 29 | **XSS sanitization on free-text inputs** | ✅ FIXED | Added `bleach.clean()` on chat messages, assessment notes, and notification messages |
 | 30 | **No structured JSON logging** | ✅ FIXED | Added `JSONFormatter` class to FastAPI `main.py`, quieted noisy loggers |
-| 31 | **No database query monitoring** | 🔴 NOT DONE | Needs: Enable Neon Query Insights, log queries >500ms at SQLAlchemy level |
-| 32 | **PII in sub_accounts (GDPR/CCPA risk)** | 🔴 NOT DONE | Needs: encrypt `birth_date` at application level, document data deletion workflow |
-| 33 | **Venmo/Zelle/cash payments have no verification** | 🟡 PARTIAL | Added `confirmed_by` and `confirmed_at` audit fields. Still needs: transaction reference requirement, automated email on confirmation, monthly reconciliation report |
+| 31 | **No database query monitoring** | ✅ FIXED | Added SQLAlchemy event listeners to log queries exceeding 500ms threshold |
+| 32 | **PII in sub_accounts (GDPR/CCPA risk)** | 🟡 PARTIAL | GDPR deletion endpoint added. Still needs: encrypt `birth_date` at application level |
+| 33 | **Venmo/Zelle/cash payments have no verification** | ✅ FIXED | Added `confirmed_by`/`confirmed_at` audit fields, transaction reference on confirmation, automated email on payment confirmation, monthly reconciliation endpoint (`GET /payments/reconciliation`) |
 | 34 | **PostgreSQL 18 in production (beta)** | 🔴 NOT DONE | Needs: migrate Neon to PG 16 LTS or PG 17 stable |
 
 ---
@@ -80,17 +80,25 @@
 
 | Priority | Total | Fixed | Remaining |
 |----------|-------|-------|-----------|
-| **P0 Critical** | 7 | 5 | 2 |
-| **P1 High** | 13 | 7 | 6 |
-| **P2 Medium** | 14 | 4 | 10 |
+| **P0 Critical** | 7 | 7 | 0 |
+| **P1 High** | 13 | 10 | 3 |
+| **P2 Medium** | 14 | 8 | 6 |
 | **UI Fixes** | 9 | 9 | 0 |
-| **Grand Total** | 43 | 25 | 18 |
+| **Grand Total** | 43 | 34 | 9 |
 
-### 🔴 Remaining Critical/High Items (Should Do Next)
+### ✅ All P0 Critical Items Complete!
 
-1. **JWT refresh tokens** — Implement short-lived access tokens (15 min) + refresh tokens (7 days, httpOnly cookie, stored in DB for revocation)
-2. **Admin MFA** — Add TOTP-based MFA using `pyotp` for all admin accounts
-3. **Staging environment** — Create `develop` branch with Vercel preview + Render staging
-4. **Render upgrade** — Upgrade to Starter ($7/mo) to eliminate cold starts
-5. **Email DNS records** — Configure SPF, DKIM, DMARC for email deliverability
-6. **JWT_SECRET rotation** — Implement key versioning with `kid` header
+### 🟠 Remaining P1 High Items (Infrastructure)
+
+1. **Staging environment** — Create `develop` branch with Vercel preview + Render staging
+2. **Render upgrade** — Upgrade to Starter ($7/mo) to eliminate cold starts
+3. **Email DNS records** — Configure SPF, DKIM, DMARC for email deliverability
+
+### 🟡 Remaining P2 Medium Items
+
+1. **Calendar table → VIEW** — Convert to PostgreSQL VIEW or materialized view
+2. **Redis caching** — Upstash Redis for class schedules (TTL: 5 min)
+3. **SPF/DKIM/DMARC** — Same as P1 #19
+4. **Refund workflow** — Stripe refund API integration + receipt generation
+5. **PII encryption** — Encrypt `birth_date` at application level
+6. **PostgreSQL 18 → 16 LTS** — Migrate Neon to stable PG version

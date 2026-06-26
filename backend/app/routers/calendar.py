@@ -6,6 +6,9 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import ClassSession, CourtBooking
 from app.schemas import CalendarMonth, CalendarDay, ClassOut, BookingOut
+from fastapi.responses import StreamingResponse
+import csv
+from io import StringIO
 
 router = APIRouter()
 
@@ -51,3 +54,20 @@ def get_calendar(year: int = 2026, month: int = 6, db: Session = Depends(get_db)
         days.append(CalendarDay(day=d, date=date_str, classes=day_classes, bookings=day_bookings))
 
     return CalendarMonth(year=year, month=month, days=days)
+
+
+@router.get("/export")
+def export_calendar_csv(year: int = 2026, month: int = 6, db: Session = Depends(get_db)):
+    """Export the calendar month as CSV containing classes and bookings."""
+    cal = get_calendar(year=year, month=month, db=db)
+    buf = StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["type", "date", "title_or_court", "start_time", "end_time", "instructor_or_user", "details"])
+    for day in cal.days:
+        for cls in day.classes:
+            writer.writerow(["class", day.date, cls.title, cls.start_time, cls.end_time, cls.instructor_name, cls.level])
+        for b in day.bookings:
+            writer.writerow(["booking", day.date, f"Court {b.court_number}", b.start_time, b.end_time, b.user_id, b.notes])
+
+    buf.seek(0)
+    return StreamingResponse(buf, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=calendar_{year}_{month}.csv"})

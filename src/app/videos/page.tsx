@@ -54,42 +54,23 @@ export default function VideosPage() {
               <div key={video.id} className="card overflow-hidden group">
                 <div className="relative aspect-video">
                   {playingId === video.id ? (
-                    video.localVideo ? (
-                      <video
-                        src={video.localVideo}
-                        title={video.title}
-                        autoPlay
-                        controls
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <iframe
-                        src={`https://www.youtube.com/embed/${video.youtubeId}?autoplay=1`}
-                        title={video.title}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        className="w-full h-full"
-                      />
-                    )
+                    <iframe
+                      src={`https://www.youtube.com/embed/${video.youtubeId}?autoplay=1`}
+                      title={video.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full"
+                    />
                   ) : (
                     <button
                       onClick={() => setPlayingId(video.id)}
                       className="w-full h-full relative"
                     >
-                      {video.localVideo ? (
-                        <video
-                          src={video.localVideo}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          muted
-                          preload="metadata"
-                        />
-                      ) : (
-                        <img
-                          src={video.thumbnail}
-                          alt={video.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      )}
+                      <img
+                        src={video.thumbnail}
+                        alt={video.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
                       <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                         <div className="w-14 h-14 bg-yellow-500 rounded-full flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
                           <Play className="w-6 h-6 text-green-900 ml-0.5" fill="currentColor" />

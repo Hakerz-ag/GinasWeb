@@ -31,6 +31,8 @@ class User(Base):
     assessment_completed = Column(Boolean, default=False)  # must complete 1-on-1 before classes
     sessions_taken = Column(Integer, default=0)  # total sessions completed
     status = Column(String, default="active")  # "active", "pending", "suspended"
+    totp_secret = Column(String, nullable=True)  # Base32-encoded TOTP secret for MFA
+    totp_enabled = Column(Boolean, default=False)  # Whether MFA is enabled for this user
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -88,6 +90,7 @@ class ClassSession(Base):
     instructor_name = Column(String, nullable=False)
     type = Column(String, nullable=False)  # "junior-clinic", "adult-clinic", "private", "semi-private", "assessment"
     level = Column(String, nullable=False)  # "beginner", "intermediate", "advanced", "all"
+    season = Column(String, default="")  # "Fall 2026", "Spring 2026", "Winter 2026" — which season this class belongs to
     day_of_week = Column(String, nullable=False)
     start_time = Column(String, nullable=False)
     end_time = Column(String, nullable=False)
@@ -132,12 +135,14 @@ class ClassEnrollment(Base):
     id = Column(String, primary_key=True, default=lambda: _generate_id("enr"))
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     class_id = Column(String, ForeignKey("class_sessions.id", ondelete="CASCADE"), nullable=False)
+    sub_account_id = Column(String, ForeignKey("sub_accounts.id", ondelete="SET NULL"), nullable=True)  # Which child is enrolled (null = parent themselves)
     status = Column(String, default="pending")  # "pending", "approved", "waitlisted", "active"
     enrolled_at = Column(DateTime, server_default=func.now())
     deleted_at = Column(DateTime, nullable=True)  # soft-delete
 
     user = relationship("User", back_populates="enrollments")
     class_session = relationship("ClassSession", back_populates="enrollments")
+    sub_account = relationship("SubAccount")
 
 
 # ── Open Times ──────────────────────────────────────────────────────────────
@@ -147,7 +152,9 @@ class OpenTime(Base):
 
     id = Column(String, primary_key=True, default=lambda: _generate_id("ot"))
     day = Column(String, nullable=False)
-    time = Column(String, nullable=False)
+    start_time = Column(String, nullable=False, default="9:00 AM")  # e.g. "9:00 AM"
+    end_time = Column(String, nullable=False, default="10:00 AM")    # e.g. "10:00 AM"
+    time = Column(String, nullable=True)  # Legacy field — kept for backward compatibility
     court = Column(String, nullable=False, default="1")
     status = Column(String, default="available")  # "available", "booked"
 
@@ -228,6 +235,34 @@ class Payment(Base):
     user = relationship("User", back_populates="payments")
 
 
+# ── Payment Plans (installment scheduling) ─────────────────────────────────
+class PaymentPlan(Base):
+    __tablename__ = "payment_plans"
+
+    id = Column(String, primary_key=True, default=lambda: _generate_id("pp"))
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    total_amount = Column(Float, nullable=False)
+    plan_type = Column(String, nullable=False)  # 'two', 'monthly', etc.
+    related_booking_id = Column(String, ForeignKey("court_bookings.id", ondelete="SET NULL"), nullable=True)
+    related_enrollment_id = Column(String, ForeignKey("class_enrollments.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    installments = relationship("PaymentPlanInstallment", back_populates="plan", cascade="all, delete-orphan")
+
+
+class PaymentPlanInstallment(Base):
+    __tablename__ = "payment_plan_installments"
+
+    id = Column(String, primary_key=True, default=lambda: _generate_id("pinst"))
+    plan_id = Column(String, ForeignKey("payment_plans.id", ondelete="CASCADE"), nullable=False)
+    due_date = Column(String, nullable=True)  # optional due date YYYY-MM-DD
+    amount = Column(Float, nullable=False)
+    status = Column(String, default="scheduled")  # 'scheduled', 'pending', 'completed', 'failed'
+    payment_id = Column(String, ForeignKey("payments.id", ondelete="SET NULL"), nullable=True)
+
+    plan = relationship("PaymentPlan", back_populates="installments")
+
+
 # ── Password Reset Tokens ─────────────────────────────────────────────────
 
 class PasswordResetToken(Base):
@@ -239,3 +274,28 @@ class PasswordResetToken(Base):
     expires_at = Column(DateTime, nullable=False)
     used = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
+
+
+# ── Refresh Tokens (for JWT refresh token rotation) ────────────────────────
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id = Column(String, primary_key=True, default=lambda: _generate_id("rt"))
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_jti = Column(String, unique=True, nullable=False)  # JWT jti claim for revocation
+    expires_at = Column(DateTime, nullable=False)
+    revoked = Column(Boolean, default=False)  # Soft-revoke instead of hard delete
+    created_at = Column(DateTime, server_default=func.now())
+
+
+# ── Seasons (persist current season settings) ───────────────────────────────
+
+class Season(Base):
+    __tablename__ = "seasons"
+
+    id = Column(String, primary_key=True, default=lambda: _generate_id("season"))
+    name = Column(String, nullable=False)  # Winter, Spring, Summer, Fall
+    continue_next = Column(Boolean, default=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

@@ -1,7 +1,8 @@
 """SQLAlchemy database setup — single engine + session factory."""
 
 import logging
-from sqlalchemy import create_engine, text, inspect
+import time
+from sqlalchemy import create_engine, text, inspect, event
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 from app.config import get_settings
@@ -26,6 +27,24 @@ if settings.db_engine != "sqlite":
         engine_kwargs["connect_args"] = {"sslmode": "require"}
 
 engine = create_engine(settings.database_url, **engine_kwargs)
+
+# ── Slow query logging ─────────────────────────────────────────────────────
+# Log any SQL query that takes longer than 500ms
+SLOW_QUERY_THRESHOLD_MS = 500
+
+@event.listens_for(engine, "before_cursor_execute")
+def _before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    context._query_start_time = time.time()
+
+@event.listens_for(engine, "after_cursor_execute")
+def _after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    total_time = (time.time() - context._query_start_time) * 1000  # ms
+    if total_time > SLOW_QUERY_THRESHOLD_MS:
+        logging.warning(
+            f"Slow query ({total_time:.0f}ms): {statement[:200]}..."
+            if len(statement) > 200
+            else f"Slow query ({total_time:.0f}ms): {statement}"
+        )
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 
@@ -71,7 +90,13 @@ def init_db():
                 ('payments', 'confirmed_by', 'TEXT'),
                 ('payments', 'confirmed_at', 'TIMESTAMP'),
                 ('class_enrollments', 'deleted_at', 'TIMESTAMP'),
+                ('class_enrollments', 'sub_account_id', 'TEXT REFERENCES sub_accounts(id)'),
+                ('class_sessions', 'season', 'TEXT'),
                 ('schedule_blocks', 'date', 'TEXT'),
+                ('open_times', 'start_time', 'TEXT'),
+                ('open_times', 'end_time', 'TEXT'),
+                ('users', 'totp_secret', 'TEXT'),
+                ('users', 'totp_enabled', 'BOOLEAN DEFAULT 0'),
             ]
             
             for table_name, column_name, column_type in columns_to_add:
@@ -87,6 +112,22 @@ def init_db():
                     conn.rollback()
                     logging.warning(f'Could not add column {table_name}.{column_name}: {e}')
             
+            # Migrate legacy open_times.time → start_time/end_time
+            try:
+                ot_columns = [col['name'] for col in inspector.get_columns('open_times')]
+                if 'time' in ot_columns and 'start_time' in ot_columns:
+                    # For existing rows where start_time is empty but time has a value,
+                    # copy the time value to start_time and set a default end_time
+                    conn.execute(sql_text(
+                        "UPDATE open_times SET start_time = time, end_time = '10:00 AM' "
+                        "WHERE (start_time IS NULL OR start_time = '') AND time IS NOT NULL AND time != ''"
+                    ))
+                    conn.commit()
+                    logging.info('Migrated open_times.time → start_time/end_time')
+            except Exception as e:
+                conn.rollback()
+                logging.warning(f'Could not migrate open_times: {e}')
+
             # Create indexes if they don't exist
             indexes_to_create = [
                 ('ix_bookings_user_id', 'court_bookings', 'user_id'),

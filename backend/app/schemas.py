@@ -22,6 +22,52 @@ class RegisterRequest(BaseModel):
 class AuthResponse(BaseModel):
     user: "UserOut"
     token: str
+    refresh_token: str = ""  # Long-lived refresh token for token rotation
+    mfa_required: bool = False
+    mfa_temp_token: str = ""  # Temporary token valid only for MFA verification
+
+
+class MFASetupResponse(BaseModel):
+    """Response when setting up MFA — includes the TOTP URI and QR code as a data URL."""
+    secret: str
+    uri: str
+    qr_code_data_url: str  # base64-encoded PNG QR code image
+
+
+class MFAVerifyRequest(BaseModel):
+    """Request to verify a TOTP code during login or MFA setup."""
+    code: str
+    temp_token: str = ""  # Required for login MFA verification
+
+
+class MFAVerifyResponse(BaseModel):
+    """Response after successful MFA verification — returns the real auth token."""
+    user: "UserOut"
+    token: str
+
+
+class RefreshRequest(BaseModel):
+    """Request to exchange a refresh token for a new access token."""
+    refresh_token: str
+
+
+class RefreshResponse(BaseModel):
+    """Response with new access + refresh token pair."""
+    user: "UserOut"
+    access_token: str
+    refresh_token: str
+
+
+class PasswordResetRequest(BaseModel):
+    """Request to initiate a password reset."""
+    email: str
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    """Request to confirm a password reset with the token and new password."""
+    email: str
+    token: str
+    new_password: str
 
 
 # ── Users ────────────────────────────────────────────────────────────────────
@@ -57,6 +103,7 @@ class UserOut(BaseModel):
     assessment_completed: bool = False
     sessions_taken: int = 0
     status: str = "active"
+    totp_enabled: bool = False     # Whether MFA is enabled for this user
     created_at: Optional[datetime] = None
     sub_accounts: List[SubAccountOut] = []
     classes: List[str] = []      # class titles the user is enrolled in
@@ -92,6 +139,7 @@ class ClassOut(BaseModel):
     instructor_name: str
     type: str
     level: str
+    season: str = ""   # "Fall 2026", "Spring 2026", "Winter 2026"
     day_of_week: str
     start_time: str
     end_time: str
@@ -108,6 +156,7 @@ class ClassCreate(BaseModel):
     instructor_name: str
     type: str = "adult-clinic"
     level: str = "beginner"
+    season: str = ""    # "Fall 2026", "Spring 2026", "Winter 2026"
     day_of_week: str = "Monday"
     start_time: str = "6:00 PM"
     end_time: str = "7:30 PM"
@@ -123,6 +172,7 @@ class ClassUpdate(BaseModel):
     instructor_name: Optional[str] = None
     type: Optional[str] = None
     level: Optional[str] = None
+    season: Optional[str] = None
     day_of_week: Optional[str] = None
     start_time: Optional[str] = None
     end_time: Optional[str] = None
@@ -172,6 +222,7 @@ class EnrollmentOut(BaseModel):
     id: str
     user_id: str
     class_id: str
+    sub_account_id: Optional[str] = None  # Which child is enrolled (null = parent themselves)
     status: str = "active"
     enrolled_at: Optional[datetime] = None
 
@@ -179,6 +230,14 @@ class EnrollmentOut(BaseModel):
 class EnrollmentCreate(BaseModel):
     user_id: str
     class_id: str
+    sub_account_id: Optional[str] = None  # If enrolling a child, pass the sub_account_id
+
+
+class BulkEnrollmentCreate(BaseModel):
+    """Enroll multiple sub-accounts (kids) in a class at once."""
+    user_id: str
+    class_id: str
+    sub_account_ids: List[str] = []  # IDs of kids to enroll. If empty, enrolls the parent.
 
 
 # ── Open Times ───────────────────────────────────────────────────────────────
@@ -186,14 +245,16 @@ class EnrollmentCreate(BaseModel):
 class OpenTimeOut(BaseModel):
     id: str
     day: str
-    time: str
+    start_time: str  # e.g. "09:00"
+    end_time: str    # e.g. "11:00"
     court: str = "1"
     status: str = "available"
 
 
 class OpenTimeCreate(BaseModel):
     day: str
-    time: str
+    start_time: str  # e.g. "09:00"
+    end_time: str    # e.g. "11:00"
     court: str = "1"
 
 
@@ -282,6 +343,20 @@ class ScheduleBlockCreate(BaseModel):
     end_time: str               # "1:00 PM"
     reason: str = ""            # "Lunch break", "Maintenance", "Closed"
     block_type: str = "closure" # "closure", "delay", "lunch"
+
+
+# ── Seasons (persist admin-selected season)
+class SeasonOut(BaseModel):
+    id: str
+    name: str
+    continue_next: bool
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class SeasonCreate(BaseModel):
+    name: str
+    continue_next: bool = False
 
 
 # ── Chat Messages ────────────────────────────────────────────────────────────
@@ -398,6 +473,32 @@ class PaymentUpdate(BaseModel):
     status: Optional[str] = None
     payment_method: Optional[str] = None
     stripe_payment_intent_id: Optional[str] = None
+
+
+# ── Payment Plans ─────────────────────────────────────────────────────────
+class PaymentPlanCreate(BaseModel):
+    user_id: str
+    total_amount: float
+    plan_type: str  # 'two' or 'monthly'
+    booking_id: Optional[str] = None
+    enrollment_id: Optional[str] = None
+
+
+class InstallmentOut(BaseModel):
+    id: str
+    due_date: Optional[str] = None
+    amount: float
+    status: str
+    payment_id: Optional[str] = None
+
+
+class PaymentPlanOut(BaseModel):
+    id: str
+    user_id: str
+    total_amount: float
+    plan_type: str
+    installments: List[InstallmentOut] = []
+    created_at: Optional[datetime] = None
     stripe_checkout_session_id: Optional[str] = None
     admin_notes: Optional[str] = None
     confirmed_by: Optional[str] = None  # admin user_id who confirmed the payment

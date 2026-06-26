@@ -11,8 +11,10 @@ class Settings(BaseSettings):
 
     # JWT Secret for auth tokens
     jwt_secret: str = "change-me-in-production"
+    jwt_secret_prev: str = ""  # Previous JWT secret for key rotation (empty = no rotation)
     jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 1440  # 24 hours
+    jwt_expire_minutes: int = 15  # Access token lifetime (short-lived for security)
+    jwt_refresh_expire_days: int = 7  # Refresh token lifetime
 
     # CORS Origins (where the frontend runs)
     # NEVER use ["*"] with allow_credentials=True
@@ -61,6 +63,15 @@ class Settings(BaseSettings):
     email_from_address: str = "noreply@ginastennisworld.com"
     email_from_name: str = "Gina's Tennis World"
     email_base_url: str = "http://localhost:3000"  # for building links in emails
+
+    # Contact form — where contact form submissions are sent
+    contact_email: str = "GinasTennisWorld@gmail.com"  # Gina's email for contact form submissions
+    gina_name: str = "Gina"  # Used in email greetings
+
+    # Twilio (SMS) configuration — optional
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from_number: str = ""  # E.164 formatted number, e.g. +1234567890
 
     # Frontend URL (for CORS and email links)
     frontend_url: str = "http://localhost:3000"

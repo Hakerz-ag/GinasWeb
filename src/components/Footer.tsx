@@ -9,18 +9,12 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="md:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
+            <div className="mb-4">
               <img
-                src="/Logo.png"
+                src="/GTW Logo-2.jpg"
                 alt="Gina's Tennis World"
-                className="w-9 h-9 rounded-full object-cover"
+                className="h-14 w-auto"
               />
-              <div>
-                <p className="font-bold text-lg">Gina's Tennis World</p>
-                <p className="text-green-300 text-xs uppercase tracking-wider">
-                  Indoor Tennis Club
-                </p>
-              </div>
             </div>
             <p className="text-green-200 text-sm leading-relaxed">
               {clubInfo.tagline}. Offering clinics, court rentals, and the exclusive ACE Attack
@@ -133,17 +127,11 @@ export default function Footer() {
           <p className="text-green-400 text-xs">
             © {new Date().getFullYear()} Gina's Tennis World. All rights reserved.
           </p>
-          <p className="text-green-500 text-xs">
-            Designed with ❤️ for the Berkeley Heights tennis community · Built by{' '}
-            <a
-              href="https://prismai.dev"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-yellow-400 hover:text-yellow-300 transition-colors font-semibold"
-            >
-              Prism AI
-            </a>
-          </p>
+          <div className="flex flex-wrap gap-4 text-xs">
+            <Link href="/privacy" className="text-green-400 hover:text-yellow-400 transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="text-green-400 hover:text-yellow-400 transition-colors">Terms of Service</Link>
+            <Link href="/refund-policy" className="text-green-400 hover:text-yellow-400 transition-colors">Refund Policy</Link>
+          </div>
         </div>
       </div>
     </footer>

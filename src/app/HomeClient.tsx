@@ -18,6 +18,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 
 export default function HomeClient() {
   const { isAuthenticated } = useAuth();
@@ -38,12 +39,42 @@ export default function HomeClient() {
   ];
 
   const reviews = [
-    { name: 'Sarah M.', role: 'Adult Clinic Student', text: 'Gina\'s Tennis World has completely transformed my game. The coaches are patient, knowledgeable, and truly care about every student\'s progress. I went from a complete beginner to playing competitive matches in just one season!' },
-    { name: 'David R.', role: 'Parent of Junior Student', text: 'My daughter has been taking junior clinics here for two years and absolutely loves it. The coaches make learning fun while still pushing the kids to improve. Best tennis program in the area!' },
-    { name: 'Maria L.', role: 'Court Rental Customer', text: 'The indoor courts are always in great condition. Booking is easy and the 30-week contract gives us a guaranteed spot every week. It\'s our family\'s go-to for tennis year-round.' },
-    { name: 'Tom K.', role: 'Adult Intermediate Student', text: 'Wendy\'s intermediate clinics are fantastic. She breaks down strategy in a way that finally clicked for me. My doubles game has improved dramatically since I started training here.' },
-    { name: 'Jennifer P.', role: 'Parent of Junior Student', text: 'Phil makes every lesson fun for the kids. My son used to dread sports activities, but now he counts down the days until tennis class. The junior program here is truly special.' },
-    { name: 'Mike H.', role: 'Adult Beginner Student', text: 'I was nervous to start tennis in my 40s, but the beginner clinic was so welcoming. No judgment, great instruction, and I met some wonderful people. Highly recommend!' },
+    {
+      name: 'Sarah M.',
+      role: 'Parent & Junior Student',
+      text: 'Gina\'s Tennis World has completely transformed my daughter\'s game — and mine too! We both take lessons here. The coaches are patient, knowledgeable, and truly care about every student\'s progress. She went from a complete beginner to playing competitive matches in just one season!',
+      image: '/IMG_0566.jpeg',
+    },
+    {
+      name: 'David R.',
+      role: 'Parent & Junior Student',
+      text: 'My daughter and I both take lessons at Gina\'s. She\'s been in the junior clinics for two years and absolutely loves it, and I joined the adult clinic last season. The coaches make learning fun while still pushing us to improve. Best tennis program in the area!',
+      image: '/IMG_0651.jpeg',
+    },
+    {
+      name: 'Maria L.',
+      role: 'Parent & Junior Student',
+      text: 'The indoor courts are always in great condition. My son and I both play here — he\'s in the junior program and I rent court time every week. The 30-week contract gives us a guaranteed spot. It\'s our family\'s go-to for tennis year-round.',
+      image: '/IMG_1156.jpeg',
+    },
+    {
+      name: 'Tom K.',
+      role: 'Parent & Junior Student',
+      text: 'Wendy\'s intermediate clinics are fantastic for adults, and my kids love the junior program. She breaks down strategy in a way that finally clicked for me. Both generations are improving — that\'s what makes Gina\'s special.',
+      image: '/IMG_1171.jpeg',
+    },
+    {
+      name: 'Jennifer P.',
+      role: 'Parent & Junior Student',
+      text: 'Phil makes every lesson fun for the kids. My son used to dread sports activities, but now he counts down the days until tennis class. I started taking adult lessons too — we practice together at home now. The junior program here is truly special.',
+      image: '/IMG_1241.jpeg',
+    },
+    {
+      name: 'Mike H.',
+      role: 'Parent & Junior Student',
+      text: 'I was nervous to start tennis in my 40s, but the beginner clinic was so welcoming. No judgment, great instruction, and I met some wonderful people. My daughter joined the junior program after seeing how much fun I was having — now we both play!',
+      image: '/IMG_1312.jpeg',
+    },
   ];
 
   // Auto-rotate carousels
@@ -56,6 +87,22 @@ export default function HomeClient() {
     }, 6000);
     return () => { clearInterval(galleryTimer); clearInterval(reviewTimer); };
   }, [galleryImages.length, reviews.length]);
+
+  // Upcoming classes
+  const [upcomingClasses, setUpcomingClasses] = useState<any[]>([]);
+  useEffect(() => {
+    let mounted = true;
+    api.getClasses()
+      .then((res) => {
+        if (!mounted) return;
+        // show next 6 classes
+        setUpcomingClasses((res.data || []).slice(0, 6));
+      })
+      .catch((err) => {
+        console.error('Failed to load classes for home page', err?.response?.data || err);
+      });
+    return () => { mounted = false; };
+  }, []);
 
   return (
     <LayoutShell>
@@ -87,7 +134,20 @@ export default function HomeClient() {
                 and the exclusive <strong className="text-yellow-400">ACE Attack</strong> training
                 system — the first and only one in New Jersey.
               </p>
-              <div className="mt-8 flex flex-wrap gap-4">
+              {/* Sign Up CTA — prominent near top */}
+              {!isAuthenticated && (
+                <div className="mb-6 bg-yellow-400/90 rounded-xl px-5 py-3 flex items-center gap-3 shadow-lg">
+                  <Zap className="w-5 h-5 text-green-900 shrink-0" />
+                  <div>
+                    <p className="font-bold text-green-900 text-sm">Sign Up Above to Get Started!</p>
+                    <p className="text-green-800 text-xs">Create your free account to book courts, join clinics, and more.</p>
+                  </div>
+                  <Link href="/register" className="ml-auto bg-green-900 text-yellow-400 font-bold px-4 py-2 rounded-lg text-sm hover:bg-green-800 transition-colors shrink-0">
+                    Sign Up Now
+                  </Link>
+                </div>
+              )}
+              <div className="mt-4 flex flex-wrap gap-4">
                 <Link href={isAuthenticated ? '/classes' : '/register'} className="btn-yellow text-base">
                   <Calendar className="w-5 h-5 inline mr-2" />
                   Schedule a Class
@@ -104,42 +164,23 @@ export default function HomeClient() {
               <div className="bg-green-800/50 backdrop-blur-sm rounded-3xl p-4 border border-green-700/50">
                 <div className="relative aspect-video rounded-2xl overflow-hidden bg-black">
                   {showIntro ? (
-                    introVideo.localVideo ? (
-                      <video
-                        src={introVideo.localVideo}
-                        title={introVideo.title}
-                        autoPlay
-                        controls
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <iframe
-                        src={`https://www.youtube.com/embed/${introVideo.youtubeId}?autoplay=1`}
-                        title={introVideo.title}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        className="w-full h-full"
-                      />
-                    )
+                    <iframe
+                      src={`https://www.youtube.com/embed/${introVideo.youtubeId}?autoplay=1`}
+                      title={introVideo.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full"
+                    />
                   ) : (
                     <button
                       onClick={() => setShowIntro(true)}
                       className="w-full h-full group relative"
                     >
-                      {introVideo.localVideo ? (
-                        <video
-                          src={introVideo.localVideo}
-                          className="w-full h-full object-cover"
-                          muted
-                          preload="metadata"
-                        />
-                      ) : (
-                        <img
-                          src={introVideo.thumbnail}
-                          alt={introVideo.title}
-                          className="w-full h-full object-cover"
-                        />
-                      )}
+                      <img
+                        src={introVideo.thumbnail}
+                        alt={introVideo.title}
+                        className="w-full h-full object-cover"
+                      />
                       <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                         <div className="w-20 h-20 bg-yellow-500 rounded-full flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform">
                           <Play className="w-8 h-8 text-green-900 ml-1" fill="currentColor" />
@@ -185,6 +226,42 @@ export default function HomeClient() {
         </div>
       </section>
 
+      {/* ===== UPCOMING LESSONS ===== */}
+      <section className="bg-white py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-6">
+            <h2 className="section-heading">Upcoming Lessons & Clinics</h2>
+            <p className="section-subheading">Join a class — open spots listed below</p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {upcomingClasses.length === 0 ? (
+              <div className="col-span-full text-center text-gray-500">No upcoming classes found.</div>
+            ) : (
+              upcomingClasses.map((c) => (
+                <div key={c.id} className="bg-green-50 rounded-2xl p-4 border border-green-100">
+                  <h3 className="font-semibold text-green-900">{c.title}</h3>
+                  <p className="text-sm text-gray-600">{c.instructor_name} · {c.type} · {c.level}</p>
+                  <div className="mt-2 text-sm text-gray-700 grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-gray-500">When</span>
+                      <div className="font-medium text-green-900">{c.day_of_week} · {c.start_time} — {c.end_time}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Dates</span>
+                      <div className="font-medium text-green-900">{c.start_date} → {c.end_date}</div>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between">
+                    <div className="text-sm text-gray-700">${c.price?.toFixed?.(2) ?? c.price}</div>
+                    <Link href={isAuthenticated ? `/classes/${c.id}` : '/register'} className="btn-yellow text-sm">Join</Link>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* ===== GALLERY & REVIEWS ===== */}
       <section className="bg-green-50 py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -195,8 +272,8 @@ export default function HomeClient() {
                 <span className="inline-block bg-green-100 text-green-700 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-3">
                   Gallery
                 </span>
-                <h2 className="section-heading">Our Community</h2>
-                <p className="section-subheading">Families making memories at Gina's Tennis World</p>
+                <h2 className="section-heading">Second-Generation Families</h2>
+                <p className="section-subheading">Second-generation players and families making memories at Gina's Tennis World</p>
               </div>
               <div className="relative">
                 <div className="overflow-hidden rounded-2xl shadow-lg">
@@ -252,8 +329,8 @@ export default function HomeClient() {
                 <span className="inline-block bg-yellow-100 text-yellow-700 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-3">
                   Reviews
                 </span>
-                <h2 className="section-heading">What Our Players Say</h2>
-                <p className="section-subheading">Trusted by families across Berkeley Heights</p>
+                <h2 className="section-heading">Families Love Gina's</h2>
+                <p className="section-subheading">Parents and their kids — both taught by Gina</p>
               </div>
               <div className="relative">
                 <div className="overflow-hidden rounded-2xl">
@@ -273,8 +350,12 @@ export default function HomeClient() {
                             &ldquo;{review.text}&rdquo;
                           </p>
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                              <span className="font-bold text-green-700">{review.name.charAt(0)}</span>
+                            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-green-200">
+                              <img
+                                src={review.image}
+                                alt={review.name}
+                                className="w-full h-full object-cover"
+                              />
                             </div>
                             <div>
                               <p className="font-semibold text-green-900 text-sm">{review.name}</p>
@@ -393,12 +474,12 @@ export default function HomeClient() {
             </div>
             <div className="bg-green-700/50 rounded-3xl p-4 border border-green-600/50">
               <div className="aspect-video rounded-2xl overflow-hidden bg-green-900">
-                <video
-                  src="/videos/the-ace-attack.mp4"
+                <iframe
+                  src="https://www.youtube.com/embed/2Eko0jiTFkY"
                   title="ACE Attack Training System"
-                  controls
-                  className="w-full h-full object-cover"
-                  preload="metadata"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full"
                 />
               </div>
             </div>
@@ -581,47 +662,29 @@ function VideoCard({
   video,
   featured = false,
 }: {
-  video: { id: string; title: string; description: string; youtubeId?: string; localVideo?: string; thumbnail: string; category: string };
+  video: { id: string; title: string; description: string; youtubeId: string; thumbnail: string; category: string };
   featured?: boolean;
 }) {
   const [playing, setPlaying] = useState(false);
   const [imgError, setImgError] = useState(false);
-  const isLocal = !!video.localVideo;
 
   return (
     <div className={`card overflow-hidden group ${featured ? '' : ''}`}>
       <div className={`relative ${featured ? 'aspect-video' : 'aspect-video'}`}>
         {playing ? (
-          isLocal ? (
-            <video
-              src={video.localVideo}
-              title={video.title}
-              autoPlay
-              controls
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <iframe
-              src={`https://www.youtube.com/embed/${video.youtubeId}?autoplay=1`}
-              title={video.title}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="w-full h-full"
-            />
-          )
+          <iframe
+            src={`https://www.youtube.com/embed/${video.youtubeId}?autoplay=1`}
+            title={video.title}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="w-full h-full"
+          />
         ) : (
           <button
             onClick={() => setPlaying(true)}
             className="w-full h-full relative"
           >
-            {isLocal ? (
-              <video
-                src={video.localVideo}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                muted
-                preload="metadata"
-              />
-            ) : !imgError ? (
+            {!imgError ? (
               <img
                 src={video.thumbnail}
                 alt={video.title}

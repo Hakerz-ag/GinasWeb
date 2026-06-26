@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Notification
 from app.schemas import NotificationOut, NotificationCreate, NotificationUpdate, MessageResponse
+from app.services.notifications_service import send_sms
 
 router = APIRouter()
 
@@ -94,3 +95,10 @@ def delete_notification(notification_id: str, db: Session = Depends(get_db)):
     db.delete(notif)
     db.commit()
     return MessageResponse(message="Notification deleted")
+
+
+@router.post('/send-sms')
+def send_sms_now(phone: str, message: str):
+    """Send an SMS immediately (uses Twilio if configured)."""
+    res = send_sms(phone, message)
+    return {"sent": res.get('sent', False), "detail": res.get('message', '')}

@@ -30,12 +30,15 @@ export default function BookCourtPage() {
   const [bookingType, setBookingType] = useState<'court' | 'assessment'>('court');
   const [step, setStep] = useState(1);
   const [selectedCourt, setSelectedCourt] = useState<number | null>(null);
+  const [noCourtPreference, setNoCourtPreference] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [selectedDuration, setSelectedDuration] = useState('1.5');
   const [partySize, setPartySize] = useState('2');
   const [notes, setNotes] = useState('');
+  const [paymentPlan, setPaymentPlan] = useState<'full'|'two'|'monthly'>('full');
   const [submitted, setSubmitted] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
   const [contractType, setContractType] = useState(0); // index into contractOptions
   const [ballMachine, setBallMachine] = useState(false);
   const [assessmentNotes, setAssessmentNotes] = useState('');
@@ -79,10 +82,30 @@ export default function BookCourtPage() {
     const rate = contractOptions[contractType].pricePerHour;
     let price = duration * rate;
     if (ballMachine) price += duration * 10;
+    // Price swell: if booking ends at or after 7:00 PM, apply 20% surcharge
+    if (selectedTime) {
+      try {
+        const timeStr = selectedTime;
+        let startHourNum = parseInt(timeStr.split(':')[0]);
+        const startMinNum = timeStr.includes(':30') ? 30 : 0;
+        if (timeStr.includes('PM') && startHourNum !== 12) startHourNum += 12;
+        if (timeStr.includes('AM') && startHourNum === 12) startHourNum = 0;
+        const durationHours = parseFloat(selectedDuration);
+        let endHourNum = startHourNum + Math.floor(durationHours);
+        let endMinNum = startMinNum + (durationHours % 1) * 60;
+        if (endMinNum >= 60) { endHourNum += 1; endMinNum -= 60; }
+        if (endHourNum >= 19) {
+          price = Math.round(price * 1.2 * 100) / 100;
+        }
+      } catch (e) {
+        // ignore parse errors
+      }
+    }
     return price;
   };
 
   const handlePaymentSelect = async (method: string, checkoutUrl?: string) => {
+    setSelectedPaymentMethod(method);
     if (!isAuthenticated || !user) return;
 
     // For Stripe, redirect to checkout
@@ -99,6 +122,23 @@ export default function BookCourtPage() {
       const rate = contractOptions[contractType].pricePerHour;
       let price = duration * rate;
       if (ballMachine) price += duration * 10;
+        // apply same price swell calculation used in price preview
+        if (selectedTime) {
+          try {
+            const timeStr = selectedTime;
+            let startHourNum = parseInt(timeStr.split(':')[0]);
+            const startMinNum = timeStr.includes(':30') ? 30 : 0;
+            if (timeStr.includes('PM') && startHourNum !== 12) startHourNum += 12;
+            if (timeStr.includes('AM') && startHourNum === 12) startHourNum = 0;
+            const durationHours = parseFloat(selectedDuration);
+            let endHourNum = startHourNum + Math.floor(durationHours);
+            let endMinNum = startMinNum + (durationHours % 1) * 60;
+            if (endMinNum >= 60) { endHourNum += 1; endMinNum -= 60; }
+            if (endHourNum >= 19) {
+              price = Math.round(price * 1.2 * 100) / 100;
+            }
+          } catch (e) {}
+        }
 
       // Create booking first
       // Parse start time properly (handle AM/PM)
@@ -128,15 +168,39 @@ export default function BookCourtPage() {
         notes: notes,
       });
 
-      // Create a pending payment record linked to the booking
-      await api.createPayment({
-        user_id: user.id,
-        amount: price,
-        payment_type: 'booking',
-        payment_method: method,
-        related_id: bookingRes.data.id,
-        description: `Court ${selectedCourt} — ${selectedDate} ${selectedTime} (${selectedDuration}hrs)${ballMachine ? ' + Ball Machine' : ''}`,
-      });
+      if (paymentPlan === 'full') {
+        // Create a single pending payment linked to the booking
+        await api.createPayment({
+          user_id: user.id,
+          amount: price,
+          payment_type: 'booking',
+          payment_method: method,
+          related_id: bookingRes.data.id,
+          description: `Court ${selectedCourt} — ${selectedDate} ${selectedTime} (${selectedDuration}hrs)${ballMachine ? ' + Ball Machine' : ''}`,
+        });
+      } else {
+        // Create a payment plan and then create initial payment for the first installment
+        const planRes = await api.createPaymentPlan({
+          user_id: user.id,
+          total_amount: price,
+          plan_type: paymentPlan,
+          booking_id: bookingRes.data.id,
+        });
+        const plan = planRes.data;
+        // Find first pending installment
+        const first = plan.installments.find((i: any) => i.status === 'pending' || i.status === 'scheduled');
+        if (first) {
+          // Create payment for the first installment (offline methods handled by admin later)
+          await api.createPayment({
+            user_id: user.id,
+            amount: first.amount,
+            payment_type: 'booking',
+            payment_method: method,
+            related_id: bookingRes.data.id,
+            description: `Installment ${first.id} of plan ${plan.id}`,
+          });
+        }
+      }
 
       setPaymentSuccess(true);
       setShowPaymentModal(false);
@@ -170,6 +234,12 @@ export default function BookCourtPage() {
                 💳 Payment is <strong>pending</strong> and will be confirmed once Gina accepts your booking.
               </p>
             </div>
+            {selectedPaymentMethod && (selectedPaymentMethod === 'cash' || selectedPaymentMethod === 'check') && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
+                <p className="text-sm font-semibold text-red-700">Reservation Notice</p>
+                <p className="text-xs text-red-700">You selected {selectedPaymentMethod === 'cash' ? 'Cash' : 'Check'}. This reserves your spot only — you must pay in full on the first day of class or your account may be suspended/banned.</p>
+              </div>
+            )}
             <div className="bg-green-50 rounded-xl p-4 text-left text-sm space-y-2 mb-6">
               <div className="flex justify-between">
                 <span className="text-gray-500">Court:</span>
@@ -438,6 +508,23 @@ export default function BookCourtPage() {
                   </div>
                 </div>
 
+                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+                  <Info className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-semibold">Cancellation & Refund Policy</p>
+                    <p className="mt-1">
+                      Contract bookings (30-week / 15-week) cancelled at least <strong>12 hours before</strong> the
+                      scheduled start time are eligible for a <strong>50% refund</strong> of completed payments.
+                      Open-time (single) bookings are non-refundable.
+                    </p>
+                  </div>
+                </div>
+
+                <label className="mt-4 inline-flex items-center gap-3 text-sm">
+                  <input type="checkbox" checked={noCourtPreference} onChange={(e) => setNoCourtPreference(e.target.checked)} className="w-4 h-4" />
+                  <span className="text-gray-600">No specific court preference (assign any available court)</span>
+                </label>
+
                 {/* Contract Type Selection */}
                 <div className="mt-6">
                   <h3 className="text-sm font-semibold text-gray-700 mb-3">Select Contract Type</h3>
@@ -491,9 +578,9 @@ export default function BookCourtPage() {
 
                 <div className="mt-8 flex justify-end">
                   <button
-                    onClick={() => selectedCourt && setStep(2)}
-                    disabled={!selectedCourt}
-                    className={`btn-primary ${!selectedCourt ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => setStep(2)}
+                    disabled={!selectedCourt && !noCourtPreference}
+                    className={`btn-primary ${(!selectedCourt && !noCourtPreference) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     Next: Date & Time
                   </button>
@@ -620,6 +707,25 @@ export default function BookCourtPage() {
                       rows={3}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none transition-colors resize-none"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Plan</label>
+                    <div className="flex gap-3">
+                      <label className={`px-4 py-2 rounded-xl border ${paymentPlan === 'full' ? 'border-green-600 bg-green-50' : 'border-gray-200'}`}>
+                        <input type="radio" name="plan" className="hidden" checked={paymentPlan === 'full'} onChange={() => setPaymentPlan('full')} />
+                        Full — pay in one payment
+                      </label>
+                      <label className={`px-4 py-2 rounded-xl border ${paymentPlan === 'two' ? 'border-green-600 bg-green-50' : 'border-gray-200'}`}>
+                        <input type="radio" name="plan" className="hidden" checked={paymentPlan === 'two'} onChange={() => setPaymentPlan('two')} />
+                        2-pay
+                      </label>
+                      <label className={`px-4 py-2 rounded-xl border ${paymentPlan === 'monthly' ? 'border-green-600 bg-green-50' : 'border-gray-200'}`}>
+                        <input type="radio" name="plan" className="hidden" checked={paymentPlan === 'monthly'} onChange={() => setPaymentPlan('monthly')} />
+                        Monthly
+                      </label>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Select a payment plan — offline methods (Venmo/Zelle/cash) require manual tracking by admin.</p>
                   </div>
 
                   {/* Summary */}

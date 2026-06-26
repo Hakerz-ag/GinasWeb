@@ -12,6 +12,7 @@ from app.schemas import (
     ALL_PAYMENT_METHODS, PAYMENT_METHOD_LABELS,
 )
 from app.config import get_settings
+from app.services.auth_middleware import get_current_user, require_admin
 
 settings = get_settings()
 
@@ -28,16 +29,24 @@ router = APIRouter()
 
 def _get_enabled_methods() -> dict:
     """Return which payment methods are enabled and their display info."""
+    # Gina currently prefers Venmo and Zelle for online payments.
+    # Cash and check are allowed but treated as "reservation only" — customer must pay in-person on first day.
     stripe_enabled = bool(settings.stripe_secret_key)
+    methods = []
+    for method in ALL_PAYMENT_METHODS:
+        entry = {
+            "id": method,
+            "label": PAYMENT_METHOD_LABELS.get(method, method),
+            # Enable only Venmo and Zelle for normal online acceptance. Stripe only if configured.
+            "enabled": method in ("venmo", "zelle") or (method == "stripe" and stripe_enabled) or method in ("cash", "check"),
+        }
+        # Mark cash/check as reservation-only so frontend can present special instructions to users
+        if method in ("cash", "check"):
+            entry["reservation_only"] = True
+        methods.append(entry)
+
     return {
-        "methods": [
-            {
-                "id": method,
-                "label": PAYMENT_METHOD_LABELS.get(method, method),
-                "enabled": method != "stripe" or stripe_enabled,
-            }
-            for method in ALL_PAYMENT_METHODS
-        ],
+        "methods": methods,
         "venmo_handle": getattr(settings, 'venmo_handle', ''),
         "zelle_info": getattr(settings, 'zelle_info', ''),
         "stripe_publishable_key": settings.stripe_publishable_key if stripe_enabled else '',
@@ -63,9 +72,13 @@ def list_payments(
     limit: int = 50,
     offset: int = 0,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """List payments, optionally filter by user, status, type, or method."""
     query = db.query(Payment)
+    # Non-admin users can only see their own payments
+    if current_user.role != 'admin':
+        query = query.filter(Payment.user_id == current_user.id)
     if user_id:
         query = query.filter(Payment.user_id == user_id)
     if status:
@@ -79,7 +92,7 @@ def list_payments(
 
 
 @router.get("/stats")
-def get_payment_stats(db: Session = Depends(get_db)):
+def get_payment_stats(db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
     """Get payment statistics for the admin dashboard."""
     from sqlalchemy import func
     total_revenue = db.query(func.sum(Payment.amount)).filter(Payment.status == "completed").scalar() or 0
@@ -146,6 +159,12 @@ def create_payment(body: PaymentCreate, db: Session = Depends(get_db)):
 
     # For offline methods, set status based on method
     initial_status = "pending"
+    # Cash/check are reservation-only: mark as 'reserved' and add admin note explaining payment policy
+    if body.payment_method in ("cash", "check"):
+        initial_status = "reserved"
+        admin_note = "Reservation only: customer must pay on first day of class or may be banned."
+    else:
+        admin_note = None
     if body.payment_method == "pay_at_location":
         initial_status = "pending"  # Customer pays when they arrive; Gina confirms
 
@@ -157,6 +176,7 @@ def create_payment(body: PaymentCreate, db: Session = Depends(get_db)):
         related_id=body.related_id,
         description=body.description,
         status=initial_status,
+        admin_notes=admin_note or "",
     )
     db.add(payment)
     db.commit()
@@ -262,8 +282,8 @@ def create_stripe_checkout_session(
 
 
 @router.put("/{payment_id}", response_model=PaymentOut)
-def update_payment(payment_id: str, body: PaymentUpdate, db: Session = Depends(get_db)):
-    """Update a payment — Gina uses this to confirm offline payments.
+def update_payment(payment_id: str, body: PaymentUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
+    """Update a payment — admin only. Gina uses this to confirm offline payments."""
     
     Examples:
     - Mark a cash payment as completed: {"status": "completed", "admin_notes": "Cash received"}
@@ -294,21 +314,69 @@ def update_payment(payment_id: str, body: PaymentUpdate, db: Session = Depends(g
 
 
 @router.post("/{payment_id}/confirm", response_model=PaymentOut)
-def confirm_offline_payment(payment_id: str, admin_notes: str = "", db: Session = Depends(get_db)):
-    """Convenience endpoint: Gina confirms she received an offline payment.
+def confirm_offline_payment(
+    payment_id: str,
+    admin_notes: str = "",
+    transaction_reference: str = "",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Convenience endpoint: Gina confirms she received an offline payment. Admin only.
     
-    Sets status to "completed" and optionally adds admin notes.
+    For Venmo/Zelle payments, a transaction_reference is recommended for audit trail.
+    Sends an automated confirmation email to the customer.
     """
     payment = db.query(Payment).filter(Payment.id == payment_id).first()
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
 
+    # For Venmo/Zelle, strongly recommend a transaction reference
+    if payment.payment_method in ("venmo", "zelle") and not transaction_reference:
+        # Don't block, but add a note
+        if not admin_notes:
+            admin_notes = "Confirmed without transaction reference"
+
     payment.status = "completed"
+    payment.confirmed_by = current_user.id
+    payment.confirmed_at = __import__('datetime').datetime.utcnow()
     if admin_notes:
         payment.admin_notes = admin_notes
+    if transaction_reference:
+        payment.admin_notes = (payment.admin_notes or "") + f" [Ref: {transaction_reference}]"
 
     db.commit()
     db.refresh(payment)
+
+    # Send confirmation email to the customer
+    try:
+        from app.services.email_service import send_email
+        user = db.query(User).filter(User.id == payment.user_id).first()
+        if user:
+            method_label = {
+                "cash": "Cash", "check": "Check", "venmo": "Venmo",
+                "zelle": "Zelle", "pay_at_location": "Pay at Location",
+            }.get(payment.payment_method, payment.payment_method)
+            send_email(
+                to_email=user.email,
+                subject=f"Payment Confirmed — {method_label} — Gina's Tennis World",
+                html_content=f"""
+                <h2>Payment Confirmed</h2>
+                <p>Hi {user.name},</p>
+                <p>Your {method_label} payment of <strong>${payment.amount:.2f}</strong> has been confirmed by Gina.</p>
+                <p><strong>Payment details:</strong></p>
+                <ul>
+                    <li>Amount: ${payment.amount:.2f}</li>
+                    <li>Method: {method_label}</li>
+                    <li>Description: {payment.description or 'N/A'}</li>
+                    <li>Confirmed: {payment.confirmed_at.strftime('%B %d, %Y at %I:%M %p') if payment.confirmed_at else 'N/A'}</li>
+                </ul>
+                <p>Thank you!</p>
+                <p>— Gina's Tennis World</p>
+                """,
+            )
+    except Exception:
+        pass  # Don't fail the confirmation if email fails
+
     return payment
 
 
@@ -402,7 +470,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 
 
 @router.delete("/{payment_id}", response_model=MessageResponse)
-def delete_payment(payment_id: str, db: Session = Depends(get_db)):
+def delete_payment(payment_id: str, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
     """Delete a payment record (admin only)."""
     payment = db.query(Payment).filter(Payment.id == payment_id).first()
     if not payment:
@@ -410,3 +478,82 @@ def delete_payment(payment_id: str, db: Session = Depends(get_db)):
     db.delete(payment)
     db.commit()
     return MessageResponse(message="Payment deleted")
+
+
+@router.get("/reconciliation")
+def get_payment_reconciliation(
+    month: str = "",  # Format: "YYYY-MM" e.g. "2026-06"
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Monthly payment reconciliation report for the admin.
+    
+    Returns a summary of all payments for a given month, broken down by method,
+    with totals for completed, pending, and reserved payments.
+    """
+    from sqlalchemy import func, extract
+    
+    query = db.query(Payment)
+    
+    if month:
+        # Filter by month (format: "YYYY-MM")
+        try:
+            year, m = month.split("-")
+            query = query.filter(
+                extract('year', Payment.created_at) == int(year),
+                extract('month', Payment.created_at) == int(m),
+            )
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="Invalid month format. Use YYYY-MM")
+    else:
+        # Default to current month
+        from datetime import datetime
+        now = datetime.utcnow()
+        query = query.filter(
+            extract('year', Payment.created_at) == now.year,
+            extract('month', Payment.created_at) == now.month,
+        )
+    
+    payments = query.order_by(Payment.created_at.desc()).all()
+    
+    # Build summary
+    summary = {
+        "total_amount": 0,
+        "completed_amount": 0,
+        "pending_amount": 0,
+        "reserved_amount": 0,
+        "by_method": {},
+        "payments": [],
+    }
+    
+    for p in payments:
+        amount = p.amount or 0
+        summary["total_amount"] += amount
+        
+        if p.status == "completed":
+            summary["completed_amount"] += amount
+        elif p.status == "reserved":
+            summary["reserved_amount"] += amount
+        else:
+            summary["pending_amount"] += amount
+        
+        method = p.payment_method or "unknown"
+        if method not in summary["by_method"]:
+            summary["by_method"][method] = {"count": 0, "total": 0}
+        summary["by_method"][method]["count"] += 1
+        summary["by_method"][method]["total"] += amount
+        
+        summary["payments"].append({
+            "id": p.id,
+            "user_id": p.user_id,
+            "amount": amount,
+            "method": method,
+            "status": p.status,
+            "description": p.description or "",
+            "admin_notes": p.admin_notes or "",
+            "confirmed_by": p.confirmed_by,
+            "confirmed_at": str(p.confirmed_at) if p.confirmed_at else None,
+            "created_at": str(p.created_at) if p.created_at else None,
+        })
+    
+    return summary

@@ -1,19 +1,20 @@
-"""Users router — CRUD for user management (admin)."""
+"""Users router — CRUD for user management (admin) + GDPR data deletion."""
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import User, SubAccount
+from app.models import User, SubAccount, CourtBooking, Payment, ClassEnrollment, Notification, ChatMessage, RefreshToken
 from app.schemas import UserOut, UserCreate, UserUpdate, SubAccountCreate, SubAccountOut, MessageResponse
 from app.routers.auth import _user_to_out
+from app.services.auth_middleware import get_current_user, require_admin
 
 router = APIRouter()
 
 
 @router.get("", response_model=list[UserOut])
-def list_users(role: str = None, db: Session = Depends(get_db)):
-    """List all users, optionally filter by role."""
+def list_users(role: str = None, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
+    """List all users, optionally filter by role. Admin only."""
     query = db.query(User)
     if role:
         query = query.filter(User.role == role)
@@ -21,9 +22,17 @@ def list_users(role: str = None, db: Session = Depends(get_db)):
     return [_user_to_out(u, db) for u in users]
 
 
+@router.get("/me", response_model=UserOut)
+def get_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get the current authenticated user's profile."""
+    return _user_to_out(current_user, db)
+
+
 @router.get("/{user_id}", response_model=UserOut)
-def get_user(user_id: str, db: Session = Depends(get_db)):
-    """Get a single user by ID."""
+def get_user(user_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Get a single user by ID. Users can only view their own profile unless admin."""
+    if current_user.role != 'admin' and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this user")
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -165,3 +174,51 @@ def update_sub_account(user_id: str, sub_id: str, body: dict, db: Session = Depe
         assessment_completed=sub.assessment_completed or False,
         sessions_taken=sub.sessions_taken or 0,
     )
+
+
+@router.delete("/me/data", response_model=MessageResponse)
+def delete_my_data(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """GDPR data deletion — delete all data for the current user.
+    
+    This permanently removes:
+    - All sub-accounts
+    - All bookings (soft-deleted)
+    - All payments (soft-deleted)
+    - All class enrollments (soft-deleted)
+    - All notifications
+    - All chat messages (anonymized)
+    - All refresh tokens (force re-login)
+    - The user account itself
+    
+    After deletion, the user will be logged out and cannot recover their account.
+    """
+    from datetime import datetime
+    user_id = current_user.id
+    
+    # Soft-delete bookings
+    db.query(CourtBooking).filter(CourtBooking.user_id == user_id, CourtBooking.deleted_at == None).update({"deleted_at": datetime.utcnow()})
+    
+    # Soft-delete payments
+    db.query(Payment).filter(Payment.user_id == user_id, Payment.deleted_at == None).update({"deleted_at": datetime.utcnow()})
+    
+    # Soft-delete enrollments
+    db.query(ClassEnrollment).filter(ClassEnrollment.user_id == user_id, ClassEnrollment.deleted_at == None).update({"deleted_at": datetime.utcnow()})
+    
+    # Delete notifications
+    db.query(Notification).filter(Notification.user_id == user_id).delete()
+    
+    # Anonymize chat messages (keep for admin records but remove PII)
+    db.query(ChatMessage).filter(ChatMessage.user_id == user_id).update({"user_id": None, "name": "Deleted User", "email": "deleted@deleted.com"})
+    
+    # Delete sub-accounts
+    db.query(SubAccount).filter(SubAccount.parent_id == user_id).delete()
+    
+    # Revoke all refresh tokens
+    db.query(RefreshToken).filter(RefreshToken.user_id == user_id).update({"revoked": True})
+    
+    # Delete the user account
+    db.query(User).filter(User.id == user_id).delete()
+    
+    db.commit()
+    
+    return MessageResponse(message="All your data has been permanently deleted. Thank you for using Gina's Tennis World.")

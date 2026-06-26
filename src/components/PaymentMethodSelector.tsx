@@ -32,10 +32,10 @@ const METHOD_ICONS: Record<string, React.ReactNode> = {
 
 const METHOD_DESCRIPTIONS: Record<string, string> = {
   stripe: 'Pay securely with your credit or debit card',
-  cash: 'Pay with cash at the front desk',
-  check: 'Mail or drop off a check at the front desk',
-  venmo: 'Send payment via Venmo',
-  zelle: 'Send payment via Zelle',
+  cash: 'Reservation only — pay on first day of class',
+  check: 'Reservation only — pay on first day of class',
+  venmo: 'Send payment via Venmo — preferred method',
+  zelle: 'Send payment via Zelle — preferred method',
   pay_at_location: 'Pay when you arrive at the club',
 };
 
@@ -127,6 +127,7 @@ export default function PaymentMethodSelector({
       {/* Method Selection */}
       <div className="space-y-2">
         <p className="text-sm font-semibold text-gray-700">Choose a payment method:</p>
+        <p className="text-xs text-green-700 mb-1 font-medium">✅ Venmo and Zelle are the preferred and fastest ways to pay.</p>
         {methods.map((method) => (
           <button
             key={method.id}
@@ -143,9 +144,20 @@ export default function PaymentMethodSelector({
               {METHOD_ICONS[method.id] || <CreditCard className="w-5 h-5" />}
             </div>
             <div className="flex-1 min-w-0">
-              <p className={`font-semibold ${selectedMethod === method.id ? 'text-green-900' : 'text-gray-800'}`}>
-                {method.label}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className={`font-semibold ${selectedMethod === method.id ? 'text-green-900' : 'text-gray-800'}`}>
+                  {method.label}
+                </p>
+                {method.id === 'venmo' && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Preferred</span>
+                )}
+                {method.id === 'zelle' && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Preferred</span>
+                )}
+                {method.reservation_only && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">Reservation Only</span>
+                )}
+              </div>
               <p className="text-xs text-gray-500 truncate">{METHOD_DESCRIPTIONS[method.id]}</p>
               {/* Show Venmo handle */}
               {method.id === 'venmo' && venmoHandle && (
@@ -173,15 +185,22 @@ export default function PaymentMethodSelector({
           <p className="text-sm font-semibold text-yellow-800 mb-1">
             📋 How to complete your payment:
           </p>
+          {/* Reservation-only warning for cash/check */}
+          {methods.find(m => m.id === selectedMethod && m.reservation_only) && (
+            <div className="mb-3 bg-red-50 border border-red-100 p-3 rounded-lg">
+              <p className="text-sm text-red-700 font-semibold">Reservation Only</p>
+              <p className="text-xs text-red-700">Selecting this method reserves your spot only. You must pay in full on the first day of class or your account may be suspended/banned.</p>
+            </div>
+          )}
           {selectedMethod === 'cash' && (
             <p className="text-sm text-yellow-700">
-              Bring cash to the front desk at your next visit. Your enrollment will be confirmed once payment is received.
+              Bring cash to the front desk at your next visit. This reserves your spot only — payment must be made on the first day of class or you risk suspension.
             </p>
           )}
           {selectedMethod === 'check' && (
             <p className="text-sm text-yellow-700">
-              Mail or drop off a check at: <strong>649 Springfield Ave, Berkeley Heights, NJ 07922</strong>. 
-              Make payable to &quot;Gina&apos;s Tennis World&quot;. Your enrollment will be confirmed once the check clears.
+              Mail or drop off a check at: <strong>649 Springfield Ave, Berkeley Heights, NJ 07922</strong>.
+              Make payable to &quot;Gina&apos;s Tennis World&quot;. This reserves your spot only — payment must be made on the first day of class or you risk suspension.
             </p>
           )}
           {selectedMethod === 'venmo' && (
