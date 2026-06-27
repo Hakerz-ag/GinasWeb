@@ -60,9 +60,9 @@ export default function Navbar() {
           {/* Logo */}
           <Link href={isAuthenticated ? dashboardPath : '/'} className="flex items-center group">
             <img
-              src="/GTW Logo-2.jpg"
+              src="/Logo.png"
               alt="Gina's Tennis World"
-              className="h-14 w-auto group-hover:opacity-90 transition-opacity"
+              className="h-10 w-auto group-hover:opacity-90 transition-opacity"
             />
           </Link>
 

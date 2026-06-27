@@ -124,7 +124,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <div className="mx-auto mb-4">
             <img
-              src="/GTW Logo-2.jpg"
+              src="/Logo.png"
               alt="Gina's Tennis World"
               className="h-20 w-auto mx-auto rounded-lg"
             />
@@ -236,11 +236,27 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* No demo credentials in production — users must register */}
+        {/* Demo credentials */}
         <div className="mt-6 text-center">
-          <p className="text-green-200/60 text-xs">
-            🎒 New here?{' '}
-            <Link href="/register" className="text-yellow-400 hover:text-yellow-300 font-semibold">
+          <p className="text-green-200/60 text-xs mb-3">Demo accounts for testing:</p>
+          <div className="flex gap-3 justify-center">
+            <button
+              type="button"
+              onClick={() => { setEmail('gina@ginastennisworld.com'); setPassword('admin123'); }}
+              className="px-4 py-2 bg-yellow-500/20 text-yellow-300 rounded-lg text-xs font-semibold hover:bg-yellow-500/30 transition-colors border border-yellow-500/30"
+            >
+              👑 Admin Demo
+            </button>
+            <button
+              type="button"
+              onClick={() => { setEmail('john@example.com'); setPassword('customer123'); }}
+              className="px-4 py-2 bg-green-500/20 text-green-300 rounded-lg text-xs font-semibold hover:bg-green-500/30 transition-colors border border-green-500/30"
+            >
+              🎒 Customer Demo
+            </button>
+          </div>
+          <p className="text-green-200/40 text-[10px] mt-2">New here?{' '}
+            <Link href="/register" className="text-yellow-400/70 hover:text-yellow-300 font-semibold">
               Create an account
             </Link>
           </p>

@@ -87,7 +87,7 @@ export default function RegisterPage() {
           </button>
           <div className="mt-4">
             <div className="mx-auto mb-3">
-              <img src="/GTW Logo-2.jpg" alt="Gina's Tennis World" className="h-16 w-auto mx-auto rounded-lg" />
+              <img src="/Logo.png" alt="Gina's Tennis World" className="h-16 w-auto mx-auto rounded-lg" />
             </div>
             <h1 className="text-2xl font-bold text-white">Register</h1>
             <p className="text-green-300 mt-1">Join Gina's Tennis World — parents/guardians register first and add family members later</p>
