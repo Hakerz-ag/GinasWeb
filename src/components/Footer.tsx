@@ -11,7 +11,7 @@ export default function Footer() {
           <div className="md:col-span-1">
             <div className="mb-4">
               <img
-                src="/Logo.png"
+                src="/HGIghew.jpg"
                 alt="Gina's Tennis World"
                 className="h-14 w-auto"
               />

@@ -124,7 +124,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <div className="mx-auto mb-4">
             <img
-              src="/Logo.png"
+              src="/HGIghew.jpg"
               alt="Gina's Tennis World"
               className="h-20 w-auto mx-auto rounded-lg"
             />
