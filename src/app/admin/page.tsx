@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import LayoutShell from '@/components/LayoutShell';
-import { api, ClassOut, UserOut, OpenTimeOut, AssessmentOut, ScheduleBlockOut, ChatMessageOut } from '@/lib/api';
+import { api, ClassOut, UserOut, OpenTimeOut, AssessmentOut, ScheduleBlockOut, ChatMessageOut, PaymentMethodConfig } from '@/lib/api';
 import {
   Users,
   Calendar,
@@ -25,6 +25,7 @@ import {
   MapPin,
   FileText,
   Sparkles,
+  CreditCard,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -42,7 +43,7 @@ const timeSlots = ['4:00 PM', '4:30 PM', '5:00 PM', '5:30 PM', '6:00 PM', '6:30 
 export default function AdminDashboard() {
   const { user, isAuthenticated, loading, justLoggedOut } = useAuth();
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState<'overview' | 'users' | 'schedule' | 'bookings' | 'email' | 'opentimes' | 'scheduleblocks' | 'messages'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'users' | 'schedule' | 'bookings' | 'email' | 'opentimes' | 'scheduleblocks' | 'messages' | 'payments'>('overview');
   const [users, setUsers] = useState<UserOut[]>([]);
   const [classes, setClasses] = useState<ClassOut[]>([]);
   const [openTimes, setOpenTimes] = useState<OpenTimeOut[]>([]);
@@ -69,6 +70,13 @@ export default function AdminDashboard() {
   const [newBlock, setNewBlock] = useState({ day: 'Monday', startTime: '12:00 PM', endTime: '1:00 PM', reason: 'Lunch break', blockType: 'lunch', date: '' });
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
+  const [paymentConfig, setPaymentConfig] = useState<PaymentMethodConfig>({
+    stripe_enabled: true, cash_enabled: true, check_enabled: true,
+    venmo_enabled: true, zelle_enabled: true, pay_at_location_enabled: true,
+    venmo_handle: '', zelle_info: '',
+  });
+  const [paymentConfigLoading, setPaymentConfigLoading] = useState(false);
+  const [paymentConfigSaved, setPaymentConfigSaved] = useState(false);
 
   // Fetch data from API on mount
   useEffect(() => {
@@ -98,7 +106,18 @@ export default function AdminDashboard() {
         console.error('Failed to fetch admin data:', err);
       }
     };
+
+    const fetchPaymentConfig = async () => {
+      try {
+        const res = await api.getPaymentConfig();
+        setPaymentConfig(res.data);
+      } catch (err) {
+        console.error('Failed to fetch payment config (may need admin auth):', err);
+      }
+    };
+
     fetchData();
+    fetchPaymentConfig();
   }, [isAuthenticated, user, loading, justLoggedOut, router]);
 
   if (loading) return null;
@@ -400,6 +419,7 @@ export default function AdminDashboard() {
               { key: 'opentimes' as const, label: 'Open Times', icon: Clock },
               { key: 'scheduleblocks' as const, label: 'Blocks', icon: Ban },
               { key: 'messages' as const, label: 'Messages', icon: MessageCircle },
+              { key: 'payments' as const, label: 'Payments', icon: CreditCard },
             ].map(tab => (
               <button key={tab.key} onClick={() => setActiveSection(tab.key)} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeSection === tab.key ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
                 <tab.icon className="w-4 h-4" />{tab.label}
@@ -1090,6 +1110,198 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── Payment Methods ─────────────────────────────────────────── */}
+          {activeSection === 'payments' && (
+            <div>
+              <h2 className="text-xl font-bold text-green-900 mb-2 flex items-center gap-2"><CreditCard className="w-5 h-5 text-yellow-500" /> Payment Methods</h2>
+              <p className="text-gray-600 text-sm mb-6">Toggle which payment methods customers can use. Changes take effect immediately.</p>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-100">
+                {/* Stripe */}
+                <div className="flex items-center justify-between p-5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center"><CreditCard className="w-5 h-5 text-purple-600" /></div>
+                    <div>
+                      <p className="font-semibold text-green-900">Credit/Debit Card (Stripe)</p>
+                      <p className="text-xs text-gray-500">Online card payments via Stripe. Requires API keys to be configured.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const updated = { ...paymentConfig, stripe_enabled: !paymentConfig.stripe_enabled };
+                      setPaymentConfig(updated);
+                      try { await api.updatePaymentConfig(updated); setPaymentConfigSaved(true); setTimeout(() => setPaymentConfigSaved(false), 2000); } catch (err) { console.error(err); setPaymentConfig({ ...paymentConfig }); }
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${paymentConfig.stripe_enabled ? 'bg-green-600' : 'bg-gray-300'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${paymentConfig.stripe_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+
+                {/* Cash */}
+                <div className="flex items-center justify-between p-5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center"><span className="text-lg">💵</span></div>
+                    <div>
+                      <p className="font-semibold text-green-900">Cash</p>
+                      <p className="text-xs text-gray-500">Reservation only — customer pays on first day of class.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const updated = { ...paymentConfig, cash_enabled: !paymentConfig.cash_enabled };
+                      setPaymentConfig(updated);
+                      try { await api.updatePaymentConfig(updated); setPaymentConfigSaved(true); setTimeout(() => setPaymentConfigSaved(false), 2000); } catch (err) { console.error(err); setPaymentConfig({ ...paymentConfig }); }
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${paymentConfig.cash_enabled ? 'bg-green-600' : 'bg-gray-300'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${paymentConfig.cash_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+
+                {/* Check */}
+                <div className="flex items-center justify-between p-5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center"><FileText className="w-5 h-5 text-blue-600" /></div>
+                    <div>
+                      <p className="font-semibold text-green-900">Check</p>
+                      <p className="text-xs text-gray-500">Reservation only — customer pays on first day of class.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const updated = { ...paymentConfig, check_enabled: !paymentConfig.check_enabled };
+                      setPaymentConfig(updated);
+                      try { await api.updatePaymentConfig(updated); setPaymentConfigSaved(true); setTimeout(() => setPaymentConfigSaved(false), 2000); } catch (err) { console.error(err); setPaymentConfig({ ...paymentConfig }); }
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${paymentConfig.check_enabled ? 'bg-green-600' : 'bg-gray-300'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${paymentConfig.check_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+
+                {/* Venmo */}
+                <div className="flex items-center justify-between p-5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center"><span className="text-lg">📱</span></div>
+                    <div>
+                      <p className="font-semibold text-green-900">Venmo</p>
+                      <p className="text-xs text-gray-500">Send payment via Venmo. Set your handle below.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const updated = { ...paymentConfig, venmo_enabled: !paymentConfig.venmo_enabled };
+                      setPaymentConfig(updated);
+                      try { await api.updatePaymentConfig(updated); setPaymentConfigSaved(true); setTimeout(() => setPaymentConfigSaved(false), 2000); } catch (err) { console.error(err); setPaymentConfig({ ...paymentConfig }); }
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${paymentConfig.venmo_enabled ? 'bg-green-600' : 'bg-gray-300'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${paymentConfig.venmo_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+
+                {/* Zelle */}
+                <div className="flex items-center justify-between p-5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center"><span className="text-lg">🏦</span></div>
+                    <div>
+                      <p className="font-semibold text-green-900">Zelle</p>
+                      <p className="text-xs text-gray-500">Send payment via Zelle. Set your info below.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const updated = { ...paymentConfig, zelle_enabled: !paymentConfig.zelle_enabled };
+                      setPaymentConfig(updated);
+                      try { await api.updatePaymentConfig(updated); setPaymentConfigSaved(true); setTimeout(() => setPaymentConfigSaved(false), 2000); } catch (err) { console.error(err); setPaymentConfig({ ...paymentConfig }); }
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${paymentConfig.zelle_enabled ? 'bg-green-600' : 'bg-gray-300'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${paymentConfig.zelle_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+
+                {/* Pay at Location */}
+                <div className="flex items-center justify-between p-5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center"><MapPin className="w-5 h-5 text-amber-600" /></div>
+                    <div>
+                      <p className="font-semibold text-green-900">Pay at Location</p>
+                      <p className="text-xs text-gray-500">Customer pays when they arrive at the club.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const updated = { ...paymentConfig, pay_at_location_enabled: !paymentConfig.pay_at_location_enabled };
+                      setPaymentConfig(updated);
+                      try { await api.updatePaymentConfig(updated); setPaymentConfigSaved(true); setTimeout(() => setPaymentConfigSaved(false), 2000); } catch (err) { console.error(err); setPaymentConfig({ ...paymentConfig }); }
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${paymentConfig.pay_at_location_enabled ? 'bg-green-600' : 'bg-gray-300'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${paymentConfig.pay_at_location_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Saved indicator */}
+              {paymentConfigSaved && (
+                <div className="mt-4 flex items-center gap-2 text-green-600 text-sm font-medium">
+                  <CheckCircle className="w-4 h-4" /> Changes saved!
+                </div>
+              )}
+
+              {/* Venmo & Zelle config */}
+              <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 className="text-lg font-bold text-green-900 mb-4">Payment Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Venmo Handle</label>
+                    <input
+                      type="text"
+                      value={paymentConfig.venmo_handle}
+                      onChange={(e) => setPaymentConfig({ ...paymentConfig, venmo_handle: e.target.value })}
+                      placeholder="@Gina-Tennis"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none transition-colors"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Shown to customers when they select Venmo payment.</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Zelle Info</label>
+                    <input
+                      type="text"
+                      value={paymentConfig.zelle_info}
+                      onChange={(e) => setPaymentConfig({ ...paymentConfig, zelle_info: e.target.value })}
+                      placeholder="ginas@tennis.com or phone number"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none transition-colors"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Email or phone number customers use to send Zelle payments.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    setPaymentConfigLoading(true);
+                    try {
+                      const res = await api.updatePaymentConfig(paymentConfig);
+                      setPaymentConfig(res.data);
+                      setPaymentConfigSaved(true);
+                      setTimeout(() => setPaymentConfigSaved(false), 3000);
+                    } catch (err) {
+                      console.error('Failed to save payment config:', err);
+                      alert('Failed to save changes. Please try again.');
+                    } finally {
+                      setPaymentConfigLoading(false);
+                    }
+                  }}
+                  disabled={paymentConfigLoading}
+                  className="mt-4 px-6 py-2.5 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+                >
+                  {paymentConfigLoading ? 'Saving...' : 'Save Payment Details'}
+                </button>
+              </div>
             </div>
           )}
         </div>

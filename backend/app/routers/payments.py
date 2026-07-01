@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.database import get_db
-from app.models import Payment, User, CourtBooking, ClassEnrollment, ClassSession
+from app.models import Payment, User, CourtBooking, ClassEnrollment, ClassSession, PaymentMethodConfig
 from app.schemas import (
-    PaymentOut, PaymentCreate, PaymentUpdate, MessageResponse,
+    PaymentOut, PaymentCreate, PaymentUpdate, MessageResponse, PaymentMethodConfigSchema,
     ALL_PAYMENT_METHODS, PAYMENT_METHOD_LABELS,
 )
 from app.config import get_settings
@@ -24,43 +24,137 @@ router = APIRouter()
 
 
 # ── Payment method configuration ────────────────────────────────────────────
-# Gina can toggle which methods she accepts via environment variables or DB config.
-# For now, all methods are enabled by default. Stripe is only active if keys are set.
+# Gina can toggle which methods she accepts via the DB config table.
+# Falls back to env vars / defaults if no DB row exists yet.
 
-def _get_enabled_methods() -> dict:
-    """Return which payment methods are enabled and their display info."""
-    # Gina currently prefers Venmo and Zelle for online payments.
-    # Cash and check are allowed but treated as "reservation only" — customer must pay in-person on first day.
-    stripe_enabled = bool(settings.stripe_secret_key)
+def _get_config(db: Session) -> PaymentMethodConfig:
+    """Get the singleton config row, creating it from defaults if needed."""
+    config = db.query(PaymentMethodConfig).filter(PaymentMethodConfig.id == "pmc-singleton").first()
+    if not config:
+        # First run — create from env defaults
+        config = PaymentMethodConfig(
+            id="pmc-singleton",
+            stripe_enabled=bool(settings.stripe_secret_key),
+            cash_enabled=settings.cash_enabled,
+            check_enabled=settings.check_enabled,
+            venmo_enabled=settings.venmo_enabled,
+            zelle_enabled=settings.zelle_enabled,
+            pay_at_location_enabled=settings.pay_at_location_enabled,
+            venmo_handle=getattr(settings, 'venmo_handle', ''),
+            zelle_info=getattr(settings, 'zelle_info', ''),
+        )
+        db.add(config)
+        db.commit()
+        db.refresh(config)
+    return config
+
+
+def _get_enabled_methods(db: Session = None) -> dict:
+    """Return which payment methods are enabled and their display info.
+    
+    If a DB session is provided, reads from the config table.
+    Otherwise falls back to env var defaults.
+    """
+    stripe_secret_available = bool(settings.stripe_secret_key)
+    
+    # Defaults from env vars
+    enabled_map = {
+        "stripe": stripe_secret_available,
+        "cash": settings.cash_enabled,
+        "check": settings.check_enabled,
+        "venmo": settings.venmo_enabled,
+        "zelle": settings.zelle_enabled,
+        "pay_at_location": settings.pay_at_location_enabled,
+    }
+    venmo_handle = getattr(settings, 'venmo_handle', '')
+    zelle_info = getattr(settings, 'zelle_info', '')
+
+    # Override with DB config if available
+    if db:
+        config = _get_config(db)
+        enabled_map["stripe"] = config.stripe_enabled and stripe_secret_available
+        enabled_map["cash"] = config.cash_enabled
+        enabled_map["check"] = config.check_enabled
+        enabled_map["venmo"] = config.venmo_enabled
+        enabled_map["zelle"] = config.zelle_enabled
+        enabled_map["pay_at_location"] = config.pay_at_location_enabled
+        venmo_handle = config.venmo_handle
+        zelle_info = config.zelle_info
+
     methods = []
     for method in ALL_PAYMENT_METHODS:
         entry = {
             "id": method,
             "label": PAYMENT_METHOD_LABELS.get(method, method),
-            # Enable only Venmo and Zelle for normal online acceptance. Stripe only if configured.
-            "enabled": method in ("venmo", "zelle") or (method == "stripe" and stripe_enabled) or method in ("cash", "check"),
+            "enabled": enabled_map.get(method, False),
         }
-        # Mark cash/check as reservation-only so frontend can present special instructions to users
+        # Mark cash/check as reservation-only so frontend can present special instructions
         if method in ("cash", "check"):
             entry["reservation_only"] = True
         methods.append(entry)
 
     return {
         "methods": methods,
-        "venmo_handle": getattr(settings, 'venmo_handle', ''),
-        "zelle_info": getattr(settings, 'zelle_info', ''),
-        "stripe_publishable_key": settings.stripe_publishable_key if stripe_enabled else '',
+        "venmo_handle": venmo_handle,
+        "zelle_info": zelle_info,
+        "stripe_publishable_key": settings.stripe_publishable_key if stripe_secret_available else '',
     }
 
 
 @router.get("/methods")
-def get_payment_methods():
+def get_payment_methods(db: Session = Depends(get_db)):
     """Return available payment methods and their configuration.
     
     The frontend uses this to show the right payment options to customers.
-    Stripe is only shown if the API keys are configured.
+    Reads from the DB config table so Gina can toggle methods from the admin UI.
     """
-    return _get_enabled_methods()
+    return _get_enabled_methods(db)
+
+
+@router.get("/config", response_model=PaymentMethodConfigSchema)
+def get_payment_config(db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
+    """Get the current payment method configuration (admin only)."""
+    config = _get_config(db)
+    return PaymentMethodConfigSchema(
+        stripe_enabled=config.stripe_enabled,
+        cash_enabled=config.cash_enabled,
+        check_enabled=config.check_enabled,
+        venmo_enabled=config.venmo_enabled,
+        zelle_enabled=config.zelle_enabled,
+        pay_at_location_enabled=config.pay_at_location_enabled,
+        venmo_handle=config.venmo_handle,
+        zelle_info=config.zelle_info,
+    )
+
+
+@router.put("/config", response_model=PaymentMethodConfigSchema)
+def update_payment_config(
+    body: PaymentMethodConfigSchema,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Update which payment methods are enabled (admin only)."""
+    config = _get_config(db)
+    config.stripe_enabled = body.stripe_enabled
+    config.cash_enabled = body.cash_enabled
+    config.check_enabled = body.check_enabled
+    config.venmo_enabled = body.venmo_enabled
+    config.zelle_enabled = body.zelle_enabled
+    config.pay_at_location_enabled = body.pay_at_location_enabled
+    config.venmo_handle = body.venmo_handle
+    config.zelle_info = body.zelle_info
+    db.commit()
+    db.refresh(config)
+    return PaymentMethodConfigSchema(
+        stripe_enabled=config.stripe_enabled,
+        cash_enabled=config.cash_enabled,
+        check_enabled=config.check_enabled,
+        venmo_enabled=config.venmo_enabled,
+        zelle_enabled=config.zelle_enabled,
+        pay_at_location_enabled=config.pay_at_location_enabled,
+        venmo_handle=config.venmo_handle,
+        zelle_info=config.zelle_info,
+    )
 
 
 @router.get("", response_model=list[PaymentOut])

@@ -517,6 +517,18 @@ class PaymentMethodConfig(BaseModel):
     zelle_info: str = ""     # e.g. "ginas@tennis.com"
 
 
+class PaymentMethodConfigSchema(BaseModel):
+    """Schema for reading/writing payment method toggles (admin UI)."""
+    stripe_enabled: bool = True
+    cash_enabled: bool = True
+    check_enabled: bool = True
+    venmo_enabled: bool = True
+    zelle_enabled: bool = True
+    pay_at_location_enabled: bool = True
+    venmo_handle: str = ""
+    zelle_info: str = ""
+
+
 # ── Password Reset ───────────────────────────────────────────────────────────
 
 class PasswordResetRequest(BaseModel):

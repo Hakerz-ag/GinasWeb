@@ -313,6 +313,17 @@ export interface PaymentMethodsResponse {
   stripe_publishable_key: string;
 }
 
+export interface PaymentMethodConfig {
+  stripe_enabled: boolean;
+  cash_enabled: boolean;
+  check_enabled: boolean;
+  venmo_enabled: boolean;
+  zelle_enabled: boolean;
+  pay_at_location_enabled: boolean;
+  venmo_handle: string;
+  zelle_info: string;
+}
+
 export interface PaymentStats {
   total_revenue: number;
   pending_revenue: number;
@@ -526,6 +537,12 @@ export const api = {
   // ── Payments ───────────────────────────────────────────────────────────
   getPaymentMethods: () =>
     axiosInstance.get<PaymentMethodsResponse>("/payments/methods"),
+
+  getPaymentConfig: () =>
+    axiosInstance.get<PaymentMethodConfig>("/payments/config"),
+
+  updatePaymentConfig: (data: PaymentMethodConfig) =>
+    axiosInstance.put<PaymentMethodConfig>("/payments/config", data),
 
   getPayments: (filters?: { user_id?: string; status?: string; payment_type?: string; payment_method?: string }) =>
     axiosInstance.get<PaymentOut[]>("/payments", { params: filters }),

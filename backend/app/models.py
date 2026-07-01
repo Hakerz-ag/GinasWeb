@@ -289,6 +289,24 @@ class RefreshToken(Base):
     created_at = Column(DateTime, server_default=func.now())
 
 
+# ── Payment Method Config (admin toggles which methods are enabled) ──────────
+
+class PaymentMethodConfig(Base):
+    """Single-row table storing which payment methods Gina accepts."""
+    __tablename__ = "payment_method_config"
+
+    id = Column(String, primary_key=True, default="pmc-singleton")  # always one row
+    stripe_enabled = Column(Boolean, default=True)
+    cash_enabled = Column(Boolean, default=True)
+    check_enabled = Column(Boolean, default=True)
+    venmo_enabled = Column(Boolean, default=True)
+    zelle_enabled = Column(Boolean, default=True)
+    pay_at_location_enabled = Column(Boolean, default=True)
+    venmo_handle = Column(String, default="")   # e.g. "@Gina-Tennis"
+    zelle_info = Column(String, default="")      # e.g. "ginas@tennis.com"
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
 # ── Seasons (persist current season settings) ───────────────────────────────
 
 class Season(Base):
