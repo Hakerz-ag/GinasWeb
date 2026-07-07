@@ -317,3 +317,18 @@ class Season(Base):
     continue_next = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+# ── Spotlight / Student of the Month ───────────────────────────────────────
+class Spotlight(Base):
+    __tablename__ = "spotlight"
+
+    id = Column(String, primary_key=True, default=lambda: _generate_id("spot"))
+    user_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    title = Column(String, default="")
+    description = Column(Text, default="")
+    image_path = Column(String, default="")  # path under /uploads/spotlight/
+    is_adult = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    user = relationship("User")

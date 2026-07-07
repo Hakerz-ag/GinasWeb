@@ -168,3 +168,113 @@ def send_booking_confirmation_email(
         subject="Booking Request Received — Gina's Tennis World",
         html_body=html,
     )
+
+
+def send_registration_email(to_email: str, name: str, phone: str, details: str = "") -> bool:
+        """Send a registration received email to the admin and a confirmation to the user.
+
+        `to_email` is the registrant's email. The admin contact address is taken
+        from settings.contact_email inside this helper when sending to Gina.
+        """
+        admin_html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #166534, #15803d); padding: 20px 30px; border-radius: 12px 12px 0 0;">
+                <h1 style="color: #facc15; margin: 0; font-size: 20px;">📥 New Registration Received</h1>
+            </div>
+            <div style="background: #ffffff; padding: 20px; border: 1px solid #e5e7eb; border-top: none;">
+                <p style="color: #374151;">Name: <strong>{name}</strong></p>
+                <p style="color: #374151;">Email: <a href="mailto:{to_email}" style="color: #15803d;">{to_email}</a></p>
+                <p style="color: #374151;">Phone: {phone or 'Not provided'}</p>
+                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 12px 0;" />
+                <p style="color: #374151; white-space: pre-wrap;">{details}</p>
+            </div>
+            <div style="background: #f0fdf4; padding: 12px 20px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none;">
+                <p style="color: #6b7280; font-size: 12px; margin: 0;">This message was sent automatically by the website.</p>
+            </div>
+        </div>
+        """
+
+        user_html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #166534, #15803d); padding: 20px 30px; border-radius: 12px 12px 0 0;">
+                <h1 style="color: #facc15; margin: 0; font-size: 20px;">🎉 Registration Received</h1>
+            </div>
+            <div style="background: #ffffff; padding: 20px; border: 1px solid #e5e7eb; border-top: none;">
+                <p style="color: #374151;">Hi {name},</p>
+                <p style="color: #374151;">We received your registration. Your account is pending admin approval.</p>
+                <p style="color: #374151;">If this was a class registration, Gina will contact you with next steps. If you have questions, reply to this email or call 908-464-9591.</p>
+                <div style="background: #f0fdf4; padding: 12px; border-radius: 8px; margin-top: 12px;">{details}</div>
+            </div>
+        </div>
+        """
+
+        # Send admin copy
+        try:
+                send_email(
+                        to_email=settings.contact_email,
+                        subject=f"New Registration — {name}",
+                        html_body=admin_html,
+                )
+        except Exception:
+                pass
+
+        # Send confirmation to user
+        try:
+                return send_email(
+                        to_email=to_email,
+                        subject="Registration Received — Gina's Tennis World",
+                        html_body=user_html,
+                )
+        except Exception:
+                return False
+
+
+def send_enrollment_email(to_email: str, student_name: str, class_title: str, class_info: str, cost: float) -> bool:
+        """Notify Gina and the student when an enrollment is created."""
+        admin_html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #166534, #15803d); padding: 20px 30px; border-radius: 12px 12px 0 0;">
+                <h1 style="color: #facc15; margin: 0; font-size: 20px;">📝 New Enrollment</h1>
+            </div>
+            <div style="background: #ffffff; padding: 20px; border: 1px solid #e5e7eb; border-top: none;">
+                <p><strong>Student:</strong> {student_name}</p>
+                <p><strong>Class:</strong> {class_title}</p>
+                <p><strong>Info:</strong> {class_info}</p>
+                <p><strong>Cost:</strong> ${cost:.2f}</p>
+            </div>
+        </div>
+        """
+
+        user_html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #166534, #15803d); padding: 20px 30px; border-radius: 12px 12px 0 0;">
+                <h1 style="color: #facc15; margin: 0; font-size: 20px;">📬 Class Registration Received</h1>
+            </div>
+            <div style="background: #ffffff; padding: 20px; border: 1px solid #e5e7eb; border-top: none;">
+                <p>Hi {student_name},</p>
+                <p>We've received your enrollment for <strong>{class_title}</strong>.</p>
+                <p><strong>Class details:</strong></p>
+                <div style="background:#f0fdf4;padding:10px;border-radius:8px;">{class_info}</div>
+                <p style="margin-top:8px;">Cost: <strong>${cost:.2f}</strong></p>
+                <p>If you did not intend to enroll, reply to this email or call 908-464-9591.</p>
+            </div>
+        </div>
+        """
+
+        try:
+                send_email(
+                        to_email=settings.contact_email,
+                        subject=f"New Enrollment — {student_name} — {class_title}",
+                        html_body=admin_html,
+                )
+        except Exception:
+                pass
+
+        try:
+                return send_email(
+                        to_email=to_email,
+                        subject=f"Enrollment Received — {class_title}",
+                        html_body=user_html,
+                )
+        except Exception:
+                return False

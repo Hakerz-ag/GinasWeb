@@ -5,12 +5,15 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import ClassSession, ClassEnrollment, SubAccount, User
+from app.models import ClassSession, ClassEnrollment, SubAccount, User, Notification, Payment
 from app.schemas import (
     ClassOut, ClassCreate, ClassUpdate,
     EnrollmentOut, EnrollmentCreate, BulkEnrollmentCreate,
     MessageResponse,
 )
+from app.services.email_service import send_enrollment_email
+from app.services.auth_middleware import require_admin
+from fastapi import Body
 
 router = APIRouter()
 
@@ -219,6 +222,15 @@ def enroll_in_class(body: EnrollmentCreate, db: Session = Depends(get_db)):
     db.add(enrollment)
     db.commit()
     db.refresh(enrollment)
+
+    # Send enrollment notification emails (best-effort)
+    try:
+        student_email = user.email
+        student_display = enrollee_name
+        class_info = f"{cls.day_of_week} {cls.start_time} - {cls.end_time} — {cls.season or ''}"
+        send_enrollment_email(student_email, student_display, cls.title, class_info, cls.price or 0.0)
+    except Exception:
+        pass
     return _enrollment_to_out(enrollment)
 
 
@@ -303,7 +315,144 @@ def bulk_enroll(body: BulkEnrollmentCreate, db: Session = Depends(get_db)):
     db.commit()
     for e in results:
         db.refresh(e)
+        # Notify each enrolled student's parent (best-effort)
+        try:
+            parent = db.query(User).filter(User.id == body.user_id).first()
+            sub = db.query(SubAccount).filter(SubAccount.id == e.sub_account_id).first()
+            email_to = sub.email or parent.email
+            student_name = sub.name if sub else parent.name
+            class_info = f"{cls.day_of_week} {cls.start_time} - {cls.end_time} — {cls.season or ''}"
+            send_enrollment_email(email_to, student_name, cls.title, class_info, cls.price or 0.0)
+        except Exception:
+            pass
     return [_enrollment_to_out(e) for e in results]
+
+
+@router.get("/{class_id}/payment-status")
+def class_payment_status(class_id: str, db: Session = Depends(get_db)):
+    """Return payment status for each enrollment in the class."""
+    cls = db.query(ClassSession).filter(ClassSession.id == class_id).first()
+    if not cls:
+        raise HTTPException(status_code=404, detail="Class not found")
+
+    enrollments = db.query(ClassEnrollment).filter(ClassEnrollment.class_id == class_id).all()
+    out = []
+    for enr in enrollments:
+        payments = db.query(Payment).filter(Payment.enrollment_id == enr.id).all()
+        paid = any(p.status == 'completed' for p in payments)
+        out.append({
+            'enrollment_id': enr.id,
+            'user_id': enr.user_id,
+            'sub_account_id': enr.sub_account_id,
+            'status': enr.status,
+            'paid': paid,
+            'payments': [p.id for p in payments],
+        })
+    return out
+
+
+@router.post("/{class_id}/notify-unpaid")
+def notify_unpaid_students(class_id: str, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
+    """Create notifications for unpaid students in a class (admin only)."""
+    cls = db.query(ClassSession).filter(ClassSession.id == class_id).first()
+    if not cls:
+        raise HTTPException(status_code=404, detail="Class not found")
+
+    enrollments = db.query(ClassEnrollment).filter(ClassEnrollment.class_id == class_id).all()
+    notified = 0
+    for enr in enrollments:
+        payments = db.query(Payment).filter(Payment.enrollment_id == enr.id).all()
+        paid = any(p.status == 'completed' for p in payments)
+        if not paid:
+            # create notification for the user
+            user = db.query(User).filter(User.id == enr.user_id).first()
+            if user:
+                note = Notification(
+                    user_id=user.id,
+                    type='payment',
+                    title='Payment Reminder',
+                    message=f'Please pay tuition for {cls.title} at {cls.start_time}.',
+                    action_url=f"/customer/payments?class_id={class_id}",
+                    related_id=enr.id,
+                )
+                db.add(note)
+                notified += 1
+    db.commit()
+    return {"notified": notified}
+
+
+@router.post("/{class_id}/set-level")
+def set_class_level(class_id: str, level: str = Body(..., embed=True), db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
+    """Set the skill level for a class — only allowed when all enrolled students have paid.
+
+    `level` should be one of the class levels ('beginner','intermediate','advanced','all').
+    """
+    cls = db.query(ClassSession).filter(ClassSession.id == class_id).first()
+    if not cls:
+        raise HTTPException(status_code=404, detail="Class not found")
+
+    enrollments = db.query(ClassEnrollment).filter(ClassEnrollment.class_id == class_id).all()
+    for enr in enrollments:
+        payments = db.query(Payment).filter(Payment.enrollment_id == enr.id).all()
+        paid = any(p.status == 'completed' for p in payments)
+        if not paid:
+            raise HTTPException(status_code=400, detail="Not all students have completed payment")
+
+    # All paid — set class level
+    cls.level = level
+    db.commit()
+    db.refresh(cls)
+    return _class_to_out(cls)
+
+
+@router.get("/{class_id}/promotion-priority")
+def promotion_priority(class_id: str, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
+    """Return a prioritized list of candidates for promotion into the given class.
+
+    Priority rules:
+      1) Users already enrolled in another class at the same day/time and same level
+      2) Users enrolled in other classes with the same skill level
+      3) New clients whose level has just been assigned (assessment completed)
+    """
+    cls = db.query(ClassSession).filter(ClassSession.id == class_id).first()
+    if not cls:
+        raise HTTPException(status_code=404, detail="Class not found")
+
+    # Gather users who are not already in this class
+    all_users = db.query(User).all()
+    candidates = []
+    for u in all_users:
+        # skip users already enrolled in this class
+        existing = db.query(ClassEnrollment).filter(ClassEnrollment.user_id == u.id, ClassEnrollment.class_id == class_id).first()
+        if existing:
+            continue
+
+        # Check other enrollments
+        other_enrs = db.query(ClassEnrollment).join(ClassSession, ClassEnrollment.class_id == ClassSession.id).filter(ClassEnrollment.user_id == u.id, ClassEnrollment.status == 'active').all()
+
+        same_slot = any((s.class_session.day_of_week == cls.day_of_week and s.class_session.start_time == cls.start_time and s.class_session.level == cls.level) for s in other_enrs)
+        same_level = any((s.class_session.level == cls.level) for s in other_enrs)
+
+        priority = 3
+        if same_slot:
+            priority = 1
+        elif same_level:
+            priority = 2
+        else:
+            # new clients with assessment completed get lower priority (3)
+            priority = 3 if u.assessment_completed else 4
+
+        candidates.append({
+            'user_id': u.id,
+            'name': u.name,
+            'email': u.email,
+            'priority': priority,
+            'assessment_completed': u.assessment_completed,
+        })
+
+    # sort by priority then by name
+    candidates.sort(key=lambda x: (x['priority'], x['name']))
+    return candidates
 
 
 @router.post("/renew/{class_id}", response_model=ClassOut, status_code=201)

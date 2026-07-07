@@ -15,6 +15,7 @@ from app.schemas import (
 )
 from app.services.auth import hash_password, verify_password, create_token, create_refresh_token, decode_token
 from app.config import get_settings
+from app.services.email_service import send_registration_email
 
 router = APIRouter()
 settings = get_settings()
@@ -290,4 +291,11 @@ def register(request: Request, body: RegisterRequest, db: Session = Depends(get_
     )
     db.add(user)
     db.commit()
+    # Send registration emails (admin + confirmation to user) — best-effort
+    try:
+        details = f"Registered via website. Phone: {body.phone or 'N/A'}"
+        send_registration_email(body.email, body.name, body.phone or '', details)
+    except Exception:
+        pass
+
     return MessageResponse(message="Registration submitted. Pending admin approval.")

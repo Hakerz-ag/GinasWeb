@@ -77,6 +77,14 @@ export default function AdminDashboard() {
   });
   const [paymentConfigLoading, setPaymentConfigLoading] = useState(false);
   const [paymentConfigSaved, setPaymentConfigSaved] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [classPayments, setClassPayments] = useState<any[]>([]);
+  const [showClassPayments, setShowClassPayments] = useState(false);
+  const [loadingClassPayments, setLoadingClassPayments] = useState(false);
+  const [spotlightFiles, setSpotlightFiles] = useState<{ adult?: File | null; teen?: File | null }>({});
+  const [spotlightDesc, setSpotlightDesc] = useState('');
+  const [spotlights, setSpotlights] = useState<any[]>([]);
 
   // Fetch data from API on mount
   useEffect(() => {
@@ -102,6 +110,12 @@ export default function AdminDashboard() {
         setScheduleBlocks(blocksRes.data);
         setChatMessages(messagesRes.data);
         setAllBookings(bookingsRes.data);
+        try {
+          const sp = await api.getSpotlight();
+          setSpotlights(sp.data || []);
+        } catch (err) {
+          console.error('Failed to load spotlight entries:', err);
+        }
       } catch (err) {
         console.error('Failed to fetch admin data:', err);
       }
@@ -137,6 +151,94 @@ export default function AdminDashboard() {
 
   const toggleEmailDay = (day: string) => {
     setEmailDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+  };
+
+  const openClassPayments = async (clsId: string) => {
+    setSelectedClassId(clsId);
+    setLoadingClassPayments(true);
+    try {
+      const res = await api.getClassPaymentStatus(clsId);
+      setClassPayments(res.data || []);
+      setShowClassPayments(true);
+    } catch (err) {
+      console.error('Failed to load class payments:', err);
+      alert('Failed to load class payments');
+    } finally {
+      setLoadingClassPayments(false);
+    }
+  };
+
+  const closeClassPayments = () => { setShowClassPayments(false); setSelectedClassId(null); setClassPayments([]); };
+
+  const markEnrollmentPaid = async (enr: any) => {
+    try {
+      // create an offline payment and immediately confirm it (admin action)
+      const cls = classes.find(c => c.id === selectedClassId);
+      const payRes = await api.createPayment({ user_id: enr.user_id, amount: cls?.price || 0, payment_type: 'class', payment_method: 'venmo', enrollment_id: enr.enrollment_id });
+      const payment = payRes.data;
+      await api.confirmPayment(payment.id, 'Marked paid by admin');
+      // refresh
+      if (selectedClassId) await openClassPayments(selectedClassId);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to mark as paid');
+    }
+  };
+
+  const notifyUnpaid = async () => {
+    if (!selectedClassId) return;
+    try {
+      const res = await api.notifyUnpaid(selectedClassId);
+      alert(`Created notifications for ${res.data.notified} users`);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to notify unpaid students');
+    }
+  };
+
+  const doSetClassLevel = async (level: string) => {
+    if (!selectedClassId) return;
+    try {
+      await api.setClassLevel(selectedClassId, level);
+      alert('Class level updated');
+      // refresh classes list
+      const res = await api.getClasses(); setClasses(res.data);
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.response?.data?.detail || 'Failed to set class level');
+    }
+  };
+
+  const loadSpotlights = async () => {
+    try {
+      const res = await api.getSpotlight();
+      setSpotlights(res.data || []);
+    } catch (err) { console.error('Failed to load spotlights:', err); }
+  };
+
+  const handleUploadSpotlight = async (isAdult: boolean) => {
+    try {
+      const file = isAdult ? spotlightFiles.adult : spotlightFiles.teen;
+      if (!file) { alert('Please select a file to upload'); return; }
+      const form = new FormData();
+      form.append('image', file);
+      form.append('title', isAdult ? 'Student of the Month (Adult)' : 'Student of the Month (Teen)');
+      form.append('description', spotlightDesc || '');
+      form.append('is_adult', isAdult ? 'true' : 'false');
+      await api.uploadSpotlight(form);
+      setSpotlightFiles({});
+      setSpotlightDesc('');
+      await loadSpotlights();
+      alert('Uploaded');
+    } catch (err) { console.error(err); alert('Upload failed'); }
+  };
+
+  const handleDeleteSpotlight = async (id: string) => {
+    if (!confirm('Delete this spotlight entry?')) return;
+    try {
+      await api.deleteSpotlight(id);
+      setSpotlights(spotlights.filter(s => s.id !== id));
+    } catch (err) { console.error(err); alert('Failed to delete'); }
   };
 
   const toggleEmailTime = (time: string) => {
@@ -181,6 +283,107 @@ export default function AdminDashboard() {
                   {sa.email && <p className="text-sm text-gray-500">{sa.email}</p>}
                 </div>
               </div>
+              {/* Per-class payment checklist */}
+              <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 className="text-lg font-bold text-green-900 mb-4">Per-class Payment Checklist</h3>
+                <p className="text-sm text-gray-500 mb-4">Open a class to see enrollments and mark students as paid.</p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {classes.map(cls => (
+                    <div key={cls.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100">
+                      <div>
+                        <p className="font-semibold text-green-900">{cls.title}</p>
+                        <p className="text-xs text-gray-500">{cls.day_of_week} {cls.start_time} • ${cls.price}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => openClassPayments(cls.id)} className="text-sm px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg">View Payments</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 text-xs text-gray-500">Tip: Use "Notify Unpaid" inside a class to create in-app alerts for unpaid students.</div>
+              </div>
+              {/* Spotlight (Student of the Month) */}
+              <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 className="text-lg font-bold text-green-900 mb-4">Student(s) of the Month</h3>
+                <p className="text-sm text-gray-500 mb-4">Upload one adult and one teen to feature on the public homepage.</p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Adult Spotlight Image</label>
+                    <input type="file" accept="image/*" onChange={(e) => setSpotlightFiles({ ...spotlightFiles, adult: e.target.files?.[0] })} />
+                    <button onClick={() => handleUploadSpotlight(true)} className="mt-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm">Upload Adult</button>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Teen Spotlight Image</label>
+                    <input type="file" accept="image/*" onChange={(e) => setSpotlightFiles({ ...spotlightFiles, teen: e.target.files?.[0] })} />
+                    <button onClick={() => handleUploadSpotlight(false)} className="mt-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm">Upload Teen</button>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <label className="text-sm font-medium text-gray-700">Description</label>
+                  <textarea value={spotlightDesc} onChange={e => setSpotlightDesc(e.target.value)} className="w-full mt-2 p-3 border rounded-lg" rows={3} />
+                </div>
+                <div className="mt-6">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Existing Spotlights</h4>
+                  {spotlights.length === 0 ? (
+                    <div className="text-sm text-gray-500">No spotlight entries yet.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {spotlights.map(s => (
+                        <div key={s.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <img src={s.image_path} alt={s.title} className="w-16 h-16 object-cover rounded-md" />
+                            <div>
+                              <p className="font-medium text-green-900">{s.title}</p>
+                              <p className="text-xs text-gray-500">{s.description}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${s.is_adult ? 'bg-blue-50 text-blue-700' : 'bg-pink-50 text-pink-700'}`}>{s.is_adult ? 'Adult' : 'Teen'}</span>
+                            <button onClick={() => handleDeleteSpotlight(s.id)} className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-lg">Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* Class Payments Modal */}
+              {showClassPayments && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-6">
+                  <div className="bg-white rounded-2xl w-full max-w-2xl shadow-lg p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-lg font-bold text-green-900">Class Payments</h4>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => { const lvl = prompt('Set class level (beginner/intermediate/advanced):'); if (lvl) doSetClassLevel(lvl); }} className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-lg">Set Level</button>
+                        <button onClick={notifyUnpaid} className="text-xs bg-yellow-100 text-yellow-700 px-3 py-1 rounded-lg">Notify Unpaid</button>
+                        <button onClick={closeClassPayments} className="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-lg">Close</button>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      {loadingClassPayments ? (
+                        <div className="text-center py-6">Loading…</div>
+                      ) : classPayments.length === 0 ? (
+                        <div className="text-center py-6 text-gray-500">No enrollments found for this class.</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {classPayments.map(enr => (
+                            <div key={enr.enrollment_id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100">
+                              <div>
+                                <p className="font-medium text-green-900">{enr.student_name || enr.user_email}</p>
+                                <p className="text-xs text-gray-500">{enr.user_phone || ''}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${enr.paid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{enr.paid ? 'Paid' : 'Unpaid'}</span>
+                                {!enr.paid && <button onClick={() => markEnrollmentPaid(enr)} className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-lg">Mark Paid</button>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-3 mt-4">
                 <div className="relative">
                   <button onClick={() => setSkillDropdownOpen(skillDropdownOpen === sa.id ? null : sa.id)} className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1 ${SKILL_COLORS[sa.skill_level] || 'bg-gray-100 text-gray-700'}`}>

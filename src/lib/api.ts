@@ -431,6 +431,18 @@ export const api = {
   getEnrollments: (filters?: { user_id?: string; class_id?: string }) =>
     axiosInstance.get<EnrollmentOut[]>("/classes/enrollments", { params: filters }),
 
+  getClassPaymentStatus: (classId: string) =>
+    axiosInstance.get(`/classes/${classId}/payment-status`),
+
+  notifyUnpaid: (classId: string) =>
+    axiosInstance.post(`/classes/${classId}/notify-unpaid`),
+
+  setClassLevel: (classId: string, level: string) =>
+    axiosInstance.post(`/classes/${classId}/set-level`, { level }),
+
+  getPromotionPriority: (classId: string) =>
+    axiosInstance.get(`/classes/${classId}/promotion-priority`),
+
   unenroll: (enrollmentId: string) =>
     axiosInstance.delete<MessageResponse>(`/classes/enroll/${enrollmentId}`),
 
@@ -550,7 +562,7 @@ export const api = {
   getPayment: (paymentId: string) =>
     axiosInstance.get<PaymentOut>(`/payments/${paymentId}`),
 
-  createPayment: (data: { user_id: string; amount: number; payment_type: string; payment_method?: string; related_id?: string; description?: string }) =>
+  createPayment: (data: { user_id: string; amount: number; payment_type: string; payment_method?: string; related_id?: string; booking_id?: string; enrollment_id?: string; description?: string }) =>
     axiosInstance.post<PaymentOut>("/payments", data),
   createStripeCheckoutSession: (data: { user_id: string; amount: number; payment_type: string; related_id?: string; description?: string }) =>
     axiosInstance.post<{ checkout_url: string; session_id: string; payment_id: string }>("/payments/create-checkout-session", null, { params: data }),
@@ -559,6 +571,15 @@ export const api = {
 
   getPaymentStats: () =>
     axiosInstance.get<PaymentStats>("/payments/stats"),
+
+  // ── Spotlight ─────────────────────────────────────────────────────────
+  getSpotlight: () =>
+    axiosInstance.get(`/spotlight`),
+
+  uploadSpotlight: (formData: FormData) =>
+    axiosInstance.post(`/spotlight`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  deleteSpotlight: (spotlightId: string) =>
+    axiosInstance.delete(`/spotlight/${spotlightId}`),
 
   // Payment plans
   createPaymentPlan: (data: { user_id: string; total_amount: number; plan_type: string; booking_id?: string; enrollment_id?: string }) =>

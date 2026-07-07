@@ -19,6 +19,7 @@ from app.database import SessionLocal, init_db
 from app.services.seed import seed_db
 from app.routers import auth, users, bookings, classes, calendar, email, opentimes, assessments, scheduleblocks, chatmessages
 from app.routers import notifications, payments, dashboard, realtime, contact, mfa
+from app.routers import spotlight
 
 settings = get_settings()
 
@@ -143,3 +144,4 @@ app.include_router(contact.router, prefix="/contact", tags=["Contact"])
 app.include_router(mfa.router, prefix="/auth/mfa", tags=["MFA"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(realtime.router, tags=["Realtime"])
+app.include_router(spotlight.router, prefix="/spotlight", tags=["Spotlight"])

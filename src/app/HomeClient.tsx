@@ -25,6 +25,7 @@ export default function HomeClient() {
   const [showIntro, setShowIntro] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [reviewIndex, setReviewIndex] = useState(0);
+  const [spotlights, setSpotlights] = useState<any[]>([]);
 
   const galleryImages = [
     { src: '/IMG_0566.jpeg', alt: 'Families enjoying tennis together' },
@@ -101,6 +102,13 @@ export default function HomeClient() {
       .catch((err) => {
         console.error('Failed to load classes for home page', err?.response?.data || err);
       });
+    return () => { mounted = false; };
+  }, []);
+
+  // Spotlight entries
+  useEffect(() => {
+    let mounted = true;
+    api.getSpotlight().then(res => { if (!mounted) return; setSpotlights(res.data || []); }).catch(err => console.error('Failed to load spotlights', err));
     return () => { mounted = false; };
   }, []);
 
@@ -205,6 +213,32 @@ export default function HomeClient() {
           </div>
         </div>
       </section>
+
+      {/* ===== STUDENT(S) OF THE MONTH ===== */}
+      {(!isAuthenticated && spotlights.length > 0) && (
+        <section className="bg-white py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-6">
+              <h2 className="section-heading">Student(s) of the Month</h2>
+              <p className="section-subheading">Celebrating our standout students</p>
+            </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              {spotlights.map(s => (
+                <div key={s.id} className="bg-green-50 rounded-2xl p-6 flex items-center gap-4 border border-green-100">
+                  <div className="w-36 h-36 rounded-lg overflow-hidden flex-shrink-0">
+                    <img src={s.image_path} alt={s.title} className="w-full h-full object-cover" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-green-900">{s.title}</h3>
+                    <p className="text-sm text-gray-700 mt-1">{s.description}</p>
+                    <div className="mt-2 text-xs text-gray-500">{s.is_adult ? 'Adult Spotlight' : 'Teen Spotlight'}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ===== FEATURES STRIP ===== */}
       <section className="bg-yellow-500">
