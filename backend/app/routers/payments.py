@@ -379,13 +379,13 @@ def create_stripe_checkout_session(
 
 @router.put("/{payment_id}", response_model=PaymentOut)
 def update_payment(payment_id: str, body: PaymentUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
-    """Update a payment — admin only. Gina uses this to confirm offline payments."""
-    
+    """Update a payment — admin only. Gina uses this to confirm offline payments.
+
     Examples:
-    - Mark a cash payment as completed: {"status": "completed", "admin_notes": "Cash received"}
-    - Mark a check as completed: {"status": "completed", "admin_notes": "Check #1234 cleared"}
-    - Mark a Venmo payment as completed: {"status": "completed", "admin_notes": "Venmo received from @user"}
-    - Update Stripe payment with intent ID: {"stripe_payment_intent_id": "pi_xxx", "status": "completed"}
+      - Mark a cash payment as completed: {"status": "completed", "admin_notes": "Cash received"}
+      - Mark a check as completed: {"status": "completed", "admin_notes": "Check #1234 cleared"}
+      - Mark a Venmo payment as completed: {"status": "completed", "admin_notes": "Venmo received from @user"}
+      - Update Stripe payment with intent ID: {"stripe_payment_intent_id": "pi_xxx", "status": "completed"}
     """
     payment = db.query(Payment).filter(Payment.id == payment_id).first()
     if not payment:
