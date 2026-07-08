@@ -97,6 +97,12 @@ def init_db():
                 ('open_times', 'end_time', 'TEXT'),
                 ('users', 'totp_secret', 'TEXT'),
                 ('users', 'totp_enabled', 'BOOLEAN DEFAULT 0'),
+                ('spotlight', 'user_id', 'TEXT'),
+                ('spotlight', 'title', 'TEXT'),
+                ('spotlight', 'description', 'TEXT'),
+                ('spotlight', 'image_path', 'TEXT'),
+                ('spotlight', 'is_adult', 'BOOLEAN DEFAULT 1'),
+                ('spotlight', 'created_at', 'TIMESTAMP'),
             ]
             
             for table_name, column_name, column_type in columns_to_add:
