@@ -79,7 +79,7 @@ class SubAccountOut(BaseModel):
     phone: str = ""
     email: str = ""
     relationship: str = "child"
-    skill_level: str = "none"       # "none", "beginner", "intermediate", "advanced"
+    skill_level: str = "none"       # "none", "beginner", "adv-beg", "intermediate", "int-adv", "advanced"
     assessment_completed: bool = False
     sessions_taken: int = 0
 
@@ -99,7 +99,7 @@ class UserOut(BaseModel):
     role: str
     phone: str = ""
     birth_date: str = ""
-    skill_level: str = "none"      # "none", "beginner", "intermediate", "advanced"
+    skill_level: str = "none"      # "none", "beginner", "adv-beg", "intermediate", "int-adv", "advanced"
     assessment_completed: bool = False
     sessions_taken: int = 0
     status: str = "active"

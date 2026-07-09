@@ -234,7 +234,7 @@ export default function ClassesPage() {
           <Filter className="w-4 h-4 text-gray-400 shrink-0" />
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-gray-500 uppercase">Level:</span>
-            {['all', 'beginner', 'intermediate', 'advanced'].map((l) => (
+            {['all', 'beginner', 'adv-beg', 'intermediate', 'int-adv', 'advanced'].map((l) => (
               <button
                 key={l}
                 onClick={() => setLevelFilter(l)}
@@ -244,7 +244,7 @@ export default function ClassesPage() {
                     : 'bg-gray-100 text-gray-600 hover:bg-green-50'
                 }`}
               >
-                {l === 'all' ? 'All Levels' : l.charAt(0).toUpperCase() + l.slice(1)}
+                {l === 'all' ? 'All Levels' : l === 'adv-beg' ? 'Adv. Beg.' : l === 'int-adv' ? 'Int./Adv.' : l.charAt(0).toUpperCase() + l.slice(1)}
               </button>
             ))}
           </div>
@@ -326,11 +326,13 @@ export default function ClassesPage() {
                       </div>
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                         cls.level === 'beginner' ? 'bg-green-100 text-green-700'
+                        : cls.level === 'adv-beg' ? 'bg-emerald-100 text-emerald-700'
                         : cls.level === 'intermediate' ? 'bg-blue-100 text-blue-700'
+                        : cls.level === 'int-adv' ? 'bg-indigo-100 text-indigo-700'
                         : cls.level === 'advanced' ? 'bg-purple-100 text-purple-700'
                         : 'bg-gray-100 text-gray-700'
                       }`}>
-                        {cls.level.charAt(0).toUpperCase() + cls.level.slice(1)}
+                        {cls.level === 'adv-beg' ? 'Adv. Beg.' : cls.level === 'int-adv' ? 'Int./Adv.' : cls.level.charAt(0).toUpperCase() + cls.level.slice(1)}
                       </span>
                     </div>
                     <h3 className="font-bold text-white text-lg">{cls.title}</h3>

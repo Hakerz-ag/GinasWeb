@@ -18,8 +18,8 @@ export const videos: Video[] = [
     id: 'v1',
     title: 'Welcome to Gina\'s Tennis World',
     description: 'Gina warmly welcomes new guests and introduces everything the club has to offer — indoor courts, clinics, the ACE Attack system, and more. A must-watch for first-time visitors!',
-    youtubeId: 'QPgkCslXxng',
-    thumbnail: 'https://img.youtube.com/vi/QPgkCslXxng/maxresdefault.jpg',
+    youtubeId: 'Hhq-10N8ll4',
+    thumbnail: 'https://img.youtube.com/vi/Hhq-10N8ll4/maxresdefault.jpg',
     category: 'intro',
   },
 
@@ -28,16 +28,16 @@ export const videos: Video[] = [
     id: 'v2',
     title: 'Day in the Life at Gina\'s Tennis World',
     description: 'Experience a day at Gina\'s Tennis World! See what makes this club special — from morning clinics to evening matches, get an inside look at the energy and community.',
-    youtubeId: 'nmdvn33SYG0',
-    thumbnail: 'https://img.youtube.com/vi/nmdvn33SYG0/maxresdefault.jpg',
+    youtubeId: 'LQXUasMGRGM',
+    thumbnail: 'https://img.youtube.com/vi/LQXUasMGRGM/maxresdefault.jpg',
     category: 'featured',
   },
   {
     id: 'v3',
     title: 'The ACE Attack!',
     description: 'The ACE Attack system is exclusive to Gina\'s Tennis World — the first and only one in New Jersey! Watch this video to see how it transforms your training and game.',
-    youtubeId: '2Eko0jiTFkY',
-    thumbnail: 'https://img.youtube.com/vi/2Eko0jiTFkY/maxresdefault.jpg',
+    youtubeId: 'z_4PBQ8lt6w',
+    thumbnail: 'https://img.youtube.com/vi/z_4PBQ8lt6w/maxresdefault.jpg',
     category: 'featured',
   },
   {
@@ -129,6 +129,34 @@ export const videos: Video[] = [
     youtubeId: 'wmf0SpTpKY0',
     thumbnail: 'https://img.youtube.com/vi/wmf0SpTpKY0/maxresdefault.jpg',
     category: 'instructional',
+  },
+];
+
+// Story videos for the homepage carousel
+export const storyVideos: Video[] = [
+  {
+    id: 'sv1',
+    title: '10 Years At Ginas',
+    description: 'A decade of tennis, community, and memories at Gina\'s Tennis World.',
+    youtubeId: 'oOixA8acHoA',
+    thumbnail: 'https://img.youtube.com/vi/oOixA8acHoA/maxresdefault.jpg',
+    category: 'featured',
+  },
+  {
+    id: 'sv2',
+    title: 'Student to Teacher',
+    description: 'From student to teacher — the journey of growth at Gina\'s.',
+    youtubeId: 'hJmxGkNepmY',
+    thumbnail: 'https://img.youtube.com/vi/hJmxGkNepmY/maxresdefault.jpg',
+    category: 'featured',
+  },
+  {
+    id: 'sv3',
+    title: 'Decades of Joy at Ginas',
+    description: 'Generations of families have found joy on these courts.',
+    youtubeId: '2oHmPPZdiyQ',
+    thumbnail: 'https://img.youtube.com/vi/2oHmPPZdiyQ/maxresdefault.jpg',
+    category: 'featured',
   },
 ];
 

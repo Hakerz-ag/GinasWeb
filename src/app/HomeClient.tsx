@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import LayoutShell from '@/components/LayoutShell';
-import { videos, introVideo, featuredVideos, instructionalVideos } from '@/data/videos';
+import { videos, introVideo, featuredVideos, instructionalVideos, storyVideos } from '@/data/videos';
 import { staff } from '@/data/staff';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -274,7 +274,7 @@ export default function HomeClient() {
               upcomingClasses.map((c) => (
                 <div key={c.id} className="bg-green-50 rounded-2xl p-4 border border-green-100">
                   <h3 className="font-semibold text-green-900">{c.title}</h3>
-                  <p className="text-sm text-gray-600">{c.type.replace('-', ' ')} · {c.level}</p>
+                  <p className="text-sm text-gray-600">{c.type === 'junior-clinic' ? 'Junior Clinic' : c.type === 'adult-clinic' ? 'Adult Clinic' : c.type.replace('-', ' ')} · {c.level === 'adv-beg' ? 'Adv. Beg.' : c.level === 'int-adv' ? 'Int./Adv.' : c.level.charAt(0).toUpperCase() + c.level.slice(1)}</p>
                   <div className="mt-2 text-sm text-gray-700 grid grid-cols-2 gap-2">
                     <div>
                       <span className="text-gray-500">When</span>
@@ -426,6 +426,46 @@ export default function HomeClient() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== STORY VIDEOS CAROUSEL ===== */}
+      <section className="bg-green-50 py-16 md:py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <span className="inline-block bg-yellow-100 text-yellow-700 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-3">
+              Our Story
+            </span>
+            <h2 className="section-heading">Generations of Tennis & Community</h2>
+            <p className="section-subheading">Watch the stories that make Gina's Tennis World a second home for so many families</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {storyVideos.map((video) => (
+              <div key={video.id} className="bg-white rounded-2xl shadow-sm border border-green-100 overflow-hidden group">
+                <div className="relative aspect-video">
+                  <img
+                    src={video.thumbnail}
+                    alt={video.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                    <a
+                      href={`https://www.youtube.com/watch?v=${video.youtubeId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-14 h-14 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform"
+                    >
+                      <Play className="w-6 h-6 text-green-900 ml-1" fill="currentColor" />
+                    </a>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold text-green-900">{video.title}</h3>
+                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">{video.description}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>

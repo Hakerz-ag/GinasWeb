@@ -29,11 +29,13 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-const SKILL_LEVELS = ['none', 'beginner', 'intermediate', 'advanced'];
+const SKILL_LEVELS = ['none', 'beginner', 'adv-beg', 'intermediate', 'int-adv', 'advanced'];
 const SKILL_COLORS: Record<string, string> = {
   none: 'bg-gray-100 text-gray-700',
   beginner: 'bg-green-100 text-green-700',
+  'adv-beg': 'bg-emerald-100 text-emerald-700',
   intermediate: 'bg-blue-100 text-blue-700',
+  'int-adv': 'bg-indigo-100 text-indigo-700',
   advanced: 'bg-purple-100 text-purple-700',
 };
 
@@ -823,7 +825,7 @@ export default function AdminDashboard() {
                     <div className="grid grid-cols-2 gap-4">
                       <div><label className="text-sm text-gray-500">Title</label><input type="text" value={newClass.title} onChange={e => setNewClass({ ...newClass, title: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
                       <div><label className="text-sm text-gray-500">Type</label><select value={newClass.type} onChange={e => setNewClass({ ...newClass, type: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="adult-clinic">Adult Clinic</option><option value="junior-clinic">Junior Clinic</option></select></div>
-                      <div><label className="text-sm text-gray-500">Level</label><select value={newClass.level} onChange={e => setNewClass({ ...newClass, level: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
+                      <div><label className="text-sm text-gray-500">Level</label><select value={newClass.level} onChange={e => setNewClass({ ...newClass, level: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="beginner">Beginner</option><option value="adv-beg">Adv. Beg.</option><option value="intermediate">Intermediate</option><option value="int-adv">Int./Adv.</option><option value="advanced">Advanced</option></select></div>
                       <div><label className="text-sm text-gray-500">Day</label><select value={newClass.day} onChange={e => setNewClass({ ...newClass, day: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
                       <div><label className="text-sm text-gray-500">Start Time</label><select value={newClass.startTime} onChange={e => setNewClass({ ...newClass, startTime: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
                       <div><label className="text-sm text-gray-500">End Time</label><select value={newClass.endTime} onChange={e => setNewClass({ ...newClass, endTime: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
