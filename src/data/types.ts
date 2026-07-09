@@ -55,6 +55,7 @@ export interface CourtBooking {
 export interface ClassSession {
   id: string;
   title: string;
+  instructorName: string;
   type: 'junior-clinic' | 'adult-clinic' | 'private' | 'semi-private' | 'assessment' | 'group';
   level: 'beginner' | 'adv-beg' | 'intermediate' | 'int-adv' | 'advanced';
   schedule: {
@@ -62,6 +63,7 @@ export interface ClassSession {
     startTime: string;
     endTime: string;
   };
+  maxStudents: number;
   minAge: number;
   maxAge: number;
   currentStudents: number;

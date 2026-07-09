@@ -136,6 +136,7 @@ class UserUpdate(BaseModel):
 class ClassOut(BaseModel):
     id: str
     title: str
+    instructor_name: str = ""
     type: str
     level: str
     season: str = ""   # "Fall 2026", "Spring 2026", "Winter 2026"
@@ -144,6 +145,7 @@ class ClassOut(BaseModel):
     end_time: str
     start_date: str = ""   # "YYYY-MM-DD"
     end_date: str = ""     # "YYYY-MM-DD" — class auto-removes after this date
+    max_students: int = 6
     min_age: int = 0
     max_age: int = 100
     current_students: int
@@ -153,6 +155,7 @@ class ClassOut(BaseModel):
 
 class ClassCreate(BaseModel):
     title: str
+    instructor_name: str = ""
     type: str = "adult-clinic"
     level: str = "beginner"
     season: str = ""    # "Fall 2026", "Spring 2026", "Winter 2026"
@@ -161,6 +164,7 @@ class ClassCreate(BaseModel):
     end_time: str = "7:30 PM"
     start_date: str = ""    # "YYYY-MM-DD"
     end_date: str = ""      # "YYYY-MM-DD"
+    max_students: int = 6
     min_age: int = 0
     max_age: int = 100
     price: float = 35
@@ -169,6 +173,7 @@ class ClassCreate(BaseModel):
 
 class ClassUpdate(BaseModel):
     title: Optional[str] = None
+    instructor_name: Optional[str] = None
     type: Optional[str] = None
     level: Optional[str] = None
     season: Optional[str] = None
@@ -177,6 +182,7 @@ class ClassUpdate(BaseModel):
     end_time: Optional[str] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
+    max_students: Optional[int] = None
     min_age: Optional[int] = None
     max_age: Optional[int] = None
     price: Optional[float] = None

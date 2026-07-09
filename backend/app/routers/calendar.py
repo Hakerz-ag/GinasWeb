@@ -36,9 +36,10 @@ def get_calendar(year: int = 2026, month: int = 6, db: Session = Depends(get_db)
         date_str = f"{year}-{str(month).zfill(2)}-{str(d).zfill(2)}"
 
         day_classes = [ClassOut(
-            id=c.id, title=c.title,
+            id=c.id, title=c.title, instructor_name=c.instructor_name or "",
             type=c.type, level=c.level, day_of_week=c.day_of_week,
             start_time=c.start_time, end_time=c.end_time,
+            max_students=c.max_students if c.max_students else 6,
             min_age=c.min_age if c.min_age is not None else 0,
             max_age=c.max_age if c.max_age is not None else 100,
             current_students=c.current_students,

@@ -126,8 +126,6 @@ def init_db():
             try:
                 ot_columns = [col['name'] for col in inspector.get_columns('open_times')]
                 if 'time' in ot_columns and 'start_time' in ot_columns:
-                    # For existing rows where start_time is empty but time has a value,
-                    # copy the time value to start_time and set a default end_time
                     conn.execute(sql_text(
                         "UPDATE open_times SET start_time = time, end_time = '10:00 AM' "
                         "WHERE (start_time IS NULL OR start_time = '') AND time IS NOT NULL AND time != ''"
@@ -137,6 +135,19 @@ def init_db():
             except Exception as e:
                 conn.rollback()
                 logging.warning(f'Could not migrate open_times: {e}')
+
+            # Make instructor_name nullable on class_sessions (was NOT NULL, now optional)
+            try:
+                class_columns = [col['name'] for col in inspector.get_columns('class_sessions')]
+                if 'instructor_name' in class_columns:
+                    conn.execute(sql_text(
+                        'ALTER TABLE class_sessions ALTER COLUMN instructor_name DROP NOT NULL'
+                    ))
+                    conn.commit()
+                    logging.info('Made class_sessions.instructor_name nullable')
+            except Exception as e:
+                conn.rollback()
+                logging.warning(f'Could not make instructor_name nullable: {e}')
 
             # Create indexes if they don't exist
             indexes_to_create = [
