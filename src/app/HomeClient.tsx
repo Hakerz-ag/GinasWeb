@@ -25,6 +25,7 @@ export default function HomeClient() {
   const [showIntro, setShowIntro] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [reviewIndex, setReviewIndex] = useState(0);
+  const [playingStoryVideo, setPlayingStoryVideo] = useState<string | null>(null);
   const [spotlights, setSpotlights] = useState<any[]>([]);
 
   const galleryImages = [
@@ -444,21 +445,28 @@ export default function HomeClient() {
             {storyVideos.map((video) => (
               <div key={video.id} className="bg-white rounded-2xl shadow-sm border border-green-100 overflow-hidden group">
                 <div className="relative aspect-video">
-                  <img
-                    src={video.thumbnail}
-                    alt={video.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                    <a
-                      href={`https://www.youtube.com/watch?v=${video.youtubeId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-14 h-14 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform"
-                    >
-                      <Play className="w-6 h-6 text-green-900 ml-1" fill="currentColor" />
-                    </a>
-                  </div>
+                  {playingStoryVideo === video.id ? (
+                    <iframe
+                      src={`https://www.youtube.com/embed/${video.youtubeId}?autoplay=1`}
+                      title={video.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full"
+                    />
+                  ) : (
+                    <>
+                      <img
+                        src={video.thumbnail}
+                        alt={video.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors flex items-center justify-center cursor-pointer" onClick={() => setPlayingStoryVideo(video.id)}>
+                        <div className="w-14 h-14 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                          <Play className="w-6 h-6 text-green-900 ml-1" fill="currentColor" />
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-green-900">{video.title}</h3>
@@ -549,7 +557,7 @@ export default function HomeClient() {
             <div className="bg-green-700/50 rounded-3xl p-4 border border-green-600/50">
               <div className="aspect-video rounded-2xl overflow-hidden bg-green-900">
                 <iframe
-                  src="https://www.youtube.com/embed/2Eko0jiTFkY"
+                  src="https://www.youtube.com/embed/z_4PBQ8lt6w"
                   title="ACE Attack Training System"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
