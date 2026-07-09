@@ -27,7 +27,6 @@ def _class_to_out(cls: ClassSession) -> ClassOut:
     return ClassOut(
         id=cls.id,
         title=cls.title,
-        instructor_name=cls.instructor_name,
         type=cls.type,
         level=cls.level,
         day_of_week=cls.day_of_week,
@@ -35,7 +34,8 @@ def _class_to_out(cls: ClassSession) -> ClassOut:
         end_time=cls.end_time,
         start_date=cls.start_date or "",
         end_date=cls.end_date or "",
-        max_students=cls.max_students,
+        min_age=cls.min_age if cls.min_age is not None else 0,
+        max_age=cls.max_age if cls.max_age is not None else 100,
         current_students=cls.current_students,
         price=cls.price,
         description=cls.description or "",
@@ -83,13 +83,13 @@ def create_class(body: ClassCreate, db: Session = Depends(get_db)):
     """Add a new class (admin)."""
     cls = ClassSession(
         title=body.title,
-        instructor_name=body.instructor_name,
         type=body.type,
         level=body.level,
         day_of_week=body.day_of_week,
         start_time=body.start_time,
         end_time=body.end_time,
-        max_students=body.max_students,
+        min_age=body.min_age,
+        max_age=body.max_age,
         price=body.price,
         description=body.description,
         season=body.season,
@@ -206,12 +206,9 @@ def enroll_in_class(body: EnrollmentCreate, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=409, detail=f"{enrollee_name} is already enrolled in this class")
 
-    # Check capacity
-    if cls.current_students >= cls.max_students:
-        status = "waitlisted"
-    else:
-        status = "active"
-        cls.current_students += 1
+    # Enroll as active (no capacity limit)
+    status = "active"
+    cls.current_students += 1
 
     enrollment = ClassEnrollment(
         user_id=body.user_id,
@@ -260,11 +257,8 @@ def bulk_enroll(body: BulkEnrollmentCreate, db: Session = Depends(get_db)):
         if existing:
             raise HTTPException(status_code=409, detail="You are already enrolled in this class")
 
-        if cls.current_students >= cls.max_students:
-            status = "waitlisted"
-        else:
-            status = "active"
-            cls.current_students += 1
+        status = "active"
+        cls.current_students += 1
 
         enrollment = ClassEnrollment(user_id=body.user_id, class_id=body.class_id, status=status)
         db.add(enrollment)
@@ -296,12 +290,9 @@ def bulk_enroll(body: BulkEnrollmentCreate, db: Session = Depends(get_db)):
         if existing:
             raise HTTPException(status_code=409, detail=f"{sub.name} is already enrolled in this class")
 
-        # Check capacity
-        if cls.current_students >= cls.max_students:
-            status = "waitlisted"
-        else:
-            status = "active"
-            cls.current_students += 1
+        # Enroll as active (no capacity limit)
+        status = "active"
+        cls.current_students += 1
 
         enrollment = ClassEnrollment(
             user_id=body.user_id,
@@ -484,13 +475,13 @@ def renew_class_to_next_season(class_id: str, db: Session = Depends(get_db)):
     # Create the new class
     new_cls = ClassSession(
         title=cls.title,
-        instructor_name=cls.instructor_name,
         type=cls.type,
         level=cls.level,
         day_of_week=cls.day_of_week,
         start_time=cls.start_time,
         end_time=cls.end_time,
-        max_students=cls.max_students,
+        min_age=cls.min_age,
+        max_age=cls.max_age,
         price=cls.price,
         description=cls.description,
         season=next_season,

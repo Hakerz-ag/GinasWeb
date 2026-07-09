@@ -87,7 +87,6 @@ class ClassSession(Base):
 
     id = Column(String, primary_key=True, default=lambda: _generate_id("cls"))
     title = Column(String, nullable=False)
-    instructor_name = Column(String, nullable=False)
     type = Column(String, nullable=False)  # "junior-clinic", "adult-clinic", "private", "semi-private", "assessment"
     level = Column(String, nullable=False)  # "beginner", "intermediate", "advanced", "all"
     season = Column(String, default="")  # "Fall 2026", "Spring 2026", "Winter 2026" — which season this class belongs to
@@ -96,7 +95,8 @@ class ClassSession(Base):
     end_time = Column(String, nullable=False)
     start_date = Column(String, default="")  # "YYYY-MM-DD" — when the class season begins
     end_date = Column(String, default="")   # "YYYY-MM-DD" — when the class season ends (auto-remove after)
-    max_students = Column(Integer, default=6)
+    min_age = Column(Integer, default=0)  # minimum age for the class
+    max_age = Column(Integer, default=100)  # maximum age for the class
     current_students = Column(Integer, default=0)
     price = Column(Float, default=0)
     description = Column(Text, default="")

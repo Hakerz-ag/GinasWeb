@@ -65,7 +65,7 @@ export default function AdminDashboard() {
   const [openTimeStart, setOpenTimeStart] = useState('9:00 AM');
   const [openTimeEnd, setOpenTimeEnd] = useState('10:00 AM');
   const [openTimeCourt, setOpenTimeCourt] = useState('1');
-  const [newClass, setNewClass] = useState({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', season: '', maxStudents: 6, price: 35, instructor: 'Wendy' });
+  const [newClass, setNewClass] = useState({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', season: '', minAge: 0, maxAge: 100, price: 35 });
   const [skillDropdownOpen, setSkillDropdownOpen] = useState<string | null>(null);
   const [newBlock, setNewBlock] = useState({ day: 'Monday', startTime: '12:00 PM', endTime: '1:00 PM', reason: 'Lunch break', blockType: 'lunch', date: '' });
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -649,10 +649,7 @@ export default function AdminDashboard() {
                         <h3 className="font-bold text-green-900 text-sm">{cls.title}</h3>
                         <span className="text-sm font-bold text-green-900">${cls.price}</span>
                       </div>
-                      <div className="w-full bg-gray-100 rounded-full h-2 mb-1">
-                        <div className={`h-2 rounded-full ${cls.current_students / cls.max_students >= 0.8 ? 'bg-yellow-500' : 'bg-green-500'}`} style={{ width: `${(cls.current_students / cls.max_students) * 100}%` }} />
-                      </div>
-                      <p className="text-xs text-gray-500">{cls.current_students}/{cls.max_students} students • {cls.day_of_week} {cls.start_time}</p>
+                      <p className="text-xs text-gray-500">{cls.current_students} students • {cls.day_of_week} {cls.start_time} • Ages {cls.min_age}–{cls.max_age}</p>
                       {cls.end_date && <p className="text-xs text-gray-400 mt-1">Season ends: {new Date(cls.end_date).toLocaleDateString()}</p>}
                     </div>
                   ))}
@@ -814,27 +811,27 @@ export default function AdminDashboard() {
                     e.preventDefault();
                     try {
                       const res = await api.createClass({
-                        title: newClass.title, instructor_name: newClass.instructor, type: newClass.type, level: newClass.level,
+                        title: newClass.title, type: newClass.type, level: newClass.level,
                         day_of_week: newClass.day, start_time: newClass.startTime, end_time: newClass.endTime,
                         start_date: newClass.startDate, end_date: newClass.endDate, season: newClass.season || undefined,
-                        max_students: newClass.maxStudents, price: newClass.price, description: '',
+                        min_age: newClass.minAge, max_age: newClass.maxAge, price: newClass.price, description: '',
                       });
                       setClasses([...classes, res.data]);
-                      setNewClass({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', season: '', maxStudents: 6, price: 35, instructor: 'Wendy' });
+                      setNewClass({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', season: '', minAge: 0, maxAge: 100, price: 35 });
                     } catch (err) { console.error(err); }
                   }}>
                     <div className="grid grid-cols-2 gap-4">
                       <div><label className="text-sm text-gray-500">Title</label><input type="text" value={newClass.title} onChange={e => setNewClass({ ...newClass, title: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
-                      <div><label className="text-sm text-gray-500">Instructor</label><input type="text" value={newClass.instructor} onChange={e => setNewClass({ ...newClass, instructor: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
-                      <div><label className="text-sm text-gray-500">Type</label><select value={newClass.type} onChange={e => setNewClass({ ...newClass, type: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="adult-clinic">Adult Clinic</option><option value="junior-clinic">Junior Clinic</option><option value="power-conditioning">Power & Conditioning</option></select></div>
-                      <div><label className="text-sm text-gray-500">Level</label><select value={newClass.level} onChange={e => setNewClass({ ...newClass, level: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option><option value="all">All</option></select></div>
+                      <div><label className="text-sm text-gray-500">Type</label><select value={newClass.type} onChange={e => setNewClass({ ...newClass, type: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="adult-clinic">Adult Clinic</option><option value="junior-clinic">Junior Clinic</option></select></div>
+                      <div><label className="text-sm text-gray-500">Level</label><select value={newClass.level} onChange={e => setNewClass({ ...newClass, level: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
                       <div><label className="text-sm text-gray-500">Day</label><select value={newClass.day} onChange={e => setNewClass({ ...newClass, day: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
                       <div><label className="text-sm text-gray-500">Start Time</label><select value={newClass.startTime} onChange={e => setNewClass({ ...newClass, startTime: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
                       <div><label className="text-sm text-gray-500">End Time</label><select value={newClass.endTime} onChange={e => setNewClass({ ...newClass, endTime: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
                       <div><label className="text-sm text-gray-500">Start Date</label><input type="date" value={newClass.startDate} onChange={e => setNewClass({ ...newClass, startDate: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
                       <div><label className="text-sm text-gray-500">End Date</label><input type="date" value={newClass.endDate} onChange={e => setNewClass({ ...newClass, endDate: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
                       <div><label className="text-sm text-gray-500">Season</label><select value={newClass.season} onChange={e => setNewClass({ ...newClass, season: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="">No Season</option><option value="winter">❄️ Winter</option><option value="spring">🌸 Spring</option><option value="summer">☀️ Summer</option><option value="fall">🍂 Fall</option></select></div>
-                      <div><label className="text-sm text-gray-500">Max Students</label><input type="number" min="1" value={newClass.maxStudents} onChange={e => setNewClass({ ...newClass, maxStudents: parseInt(e.target.value) || 1 })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
+                      <div><label className="text-sm text-gray-500">Min Age</label><input type="number" min="0" value={newClass.minAge} onChange={e => setNewClass({ ...newClass, minAge: parseInt(e.target.value) || 0 })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
+                      <div><label className="text-sm text-gray-500">Max Age</label><input type="number" min="0" value={newClass.maxAge} onChange={e => setNewClass({ ...newClass, maxAge: parseInt(e.target.value) || 100 })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
                       <div><label className="text-sm text-gray-500">Price ($)</label><input type="number" min="0" step="0.01" value={newClass.price} onChange={e => setNewClass({ ...newClass, price: parseFloat(e.target.value) || 0 })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
                     </div>
                     <button type="submit" className="mt-4 w-full text-white bg-green-600 hover:bg-green-700 rounded-lg text-sm font-medium py-2">Add Class</button>

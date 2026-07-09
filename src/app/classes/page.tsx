@@ -34,6 +34,11 @@ export default function ClassesPage() {
   const [showKidSelector, setShowKidSelector] = useState(false);
   const [selectedKids, setSelectedKids] = useState<string[]>([]);
   const [subAccounts, setSubAccounts] = useState<SubAccountOut[]>([]);
+  // First/second choice for day/time
+  const [firstChoiceDay, setFirstChoiceDay] = useState('');
+  const [firstChoiceTime, setFirstChoiceTime] = useState('');
+  const [secondChoiceDay, setSecondChoiceDay] = useState('');
+  const [secondChoiceTime, setSecondChoiceTime] = useState('');
 
   // Determine if user has completed assessment and their skill level
   const assessmentCompleted = user?.assessment_completed ?? false;
@@ -336,13 +341,8 @@ export default function ClassesPage() {
                       <div className="flex items-center gap-2 text-sm text-gray-700">
                         <Users className="w-4 h-4 text-green-600" />
                         <span>
-                          {cls.current_students}/{cls.max_students} students
+                          {cls.current_students} students
                         </span>
-                        {cls.current_students >= cls.max_students - 2 && (
-                          <span className="text-yellow-600 text-xs font-semibold">
-                            Almost Full
-                          </span>
-                        )}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-700">
                         <Calendar className="w-4 h-4 text-green-600" />
@@ -362,15 +362,11 @@ export default function ClassesPage() {
                         <DollarSign className="w-4 h-4 text-green-600" />
                         <span>${cls.price} per session</span>
                       </div>
-                    </div>
-                    {/* Capacity bar */}
-                    <div className="w-full bg-gray-100 rounded-full h-2">
-                      <div
-                        className="bg-green-500 h-2 rounded-full transition-all"
-                        style={{
-                          width: `${(cls.current_students / cls.max_students) * 100}%`,
-                        }}
-                      />
+                      {cls.min_age !== undefined && cls.max_age !== undefined && (
+                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Ages {cls.min_age}–{cls.max_age}</span>
+                        </div>
+                      )}
                     </div>
                     {/* Enrollment button */}
                     {paymentSuccess === cls.id ? (
@@ -542,6 +538,9 @@ export default function ClassesPage() {
                 <p className="text-sm text-green-700">
                   {selectedClass.day_of_week}, {selectedClass.start_time} – {selectedClass.end_time}
                 </p>
+                {selectedClass.min_age !== undefined && selectedClass.max_age !== undefined && (
+                  <p className="text-xs text-green-600 mt-1">Ages {selectedClass.min_age}–{selectedClass.max_age}</p>
+                )}
                 {selectedKids.length > 0 && (
                   <p className="text-xs text-green-600 mt-1">
                     Enrolling: {subAccounts.filter((s) => selectedKids.includes(s.id)).map((s) => s.name).join(', ')}
@@ -550,6 +549,41 @@ export default function ClassesPage() {
                 <p className="text-xs text-green-600 mt-1 font-medium">
                   💳 Payment is required to confirm your enrollment.
                 </p>
+              </div>
+              {/* First and Second Choice */}
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">Preferred Schedule (Optional)</h3>
+                <p className="text-xs text-gray-500 mb-3">If your first choice is full, we'll try your second choice.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">1st Choice Day</label>
+                    <select value={firstChoiceDay} onChange={e => setFirstChoiceDay(e.target.value)} className="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm">
+                      <option value="">Select day</option>
+                      {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">1st Choice Time</label>
+                    <select value={firstChoiceTime} onChange={e => setFirstChoiceTime(e.target.value)} className="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm">
+                      <option value="">Select time</option>
+                      {['4:00 PM','4:30 PM','5:00 PM','5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM'].map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">2nd Choice Day</label>
+                    <select value={secondChoiceDay} onChange={e => setSecondChoiceDay(e.target.value)} className="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm">
+                      <option value="">Select day</option>
+                      {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">2nd Choice Time</label>
+                    <select value={secondChoiceTime} onChange={e => setSecondChoiceTime(e.target.value)} className="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm">
+                      <option value="">Select time</option>
+                      {['4:00 PM','4:30 PM','5:00 PM','5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM'].map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                </div>
               </div>
               <PaymentMethodSelector
                 amount={selectedClass.price * (selectedKids.length || 1)}

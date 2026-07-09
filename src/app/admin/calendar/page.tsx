@@ -232,7 +232,7 @@ export default function AdminCalendarPage() {
                               </span>
                               <span className="flex items-center gap-1">
                                 <Users className="w-3 h-3" />
-                                {cls.current_students}/{cls.max_students}
+                                {cls.current_students} students
                               </span>
                             </div>
                           </div>

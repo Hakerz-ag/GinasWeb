@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     email_base_url: str = "http://localhost:3000"  # for building links in emails
 
     # Contact form — where contact form submissions are sent
-    contact_email: str = "GinasTennisWorld@gmail.com"  # Gina's email for contact form submissions
+    contact_email: str = "ginastennisworld@gmail.com"  # Gina's email for contact form submissions and admin notifications
     gina_name: str = "Gina"  # Used in email greetings
 
     # Twilio (SMS) configuration — optional

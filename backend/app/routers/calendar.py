@@ -36,10 +36,12 @@ def get_calendar(year: int = 2026, month: int = 6, db: Session = Depends(get_db)
         date_str = f"{year}-{str(month).zfill(2)}-{str(d).zfill(2)}"
 
         day_classes = [ClassOut(
-            id=c.id, title=c.title, instructor_name=c.instructor_name,
+            id=c.id, title=c.title,
             type=c.type, level=c.level, day_of_week=c.day_of_week,
             start_time=c.start_time, end_time=c.end_time,
-            max_students=c.max_students, current_students=c.current_students,
+            min_age=c.min_age if c.min_age is not None else 0,
+            max_age=c.max_age if c.max_age is not None else 100,
+            current_students=c.current_students,
             price=c.price, description=c.description,
         ) for c in all_classes if c.day_of_week == day_name]
 
@@ -62,10 +64,10 @@ def export_calendar_csv(year: int = 2026, month: int = 6, db: Session = Depends(
     cal = get_calendar(year=year, month=month, db=db)
     buf = StringIO()
     writer = csv.writer(buf)
-    writer.writerow(["type", "date", "title_or_court", "start_time", "end_time", "instructor_or_user", "details"])
+    writer.writerow(["type", "date", "title_or_court", "start_time", "end_time", "level", "details"])
     for day in cal.days:
         for cls in day.classes:
-            writer.writerow(["class", day.date, cls.title, cls.start_time, cls.end_time, cls.instructor_name, cls.level])
+            writer.writerow(["class", day.date, cls.title, cls.start_time, cls.end_time, cls.level, cls.type])
         for b in day.bookings:
             writer.writerow(["booking", day.date, f"Court {b.court_number}", b.start_time, b.end_time, b.user_id, b.notes])
 

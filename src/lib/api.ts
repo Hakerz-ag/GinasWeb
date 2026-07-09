@@ -165,7 +165,6 @@ export interface AssessmentOut {
 export interface ClassOut {
   id: string;
   title: string;
-  instructor_name: string;
   type: string;
   level: string;
   day_of_week: string;
@@ -173,7 +172,8 @@ export interface ClassOut {
   end_time: string;
   start_date: string;
   end_date: string;
-  max_students: number;
+  min_age: number;
+  max_age: number;
   current_students: number;
   price: number;
   description: string;
@@ -399,10 +399,10 @@ export const api = {
     axiosInstance.get<ClassOut>(`/classes/${classId}`),
 
   createClass: (data: {
-    title: string; instructor_name: string; type: string; level: string;
+    title: string; type: string; level: string;
     day_of_week: string; start_time: string; end_time: string;
     start_date: string; end_date: string; season?: string;
-    max_students: number; price: number; description: string;
+    min_age: number; max_age: number; price: number; description: string;
   }) => axiosInstance.post<ClassOut>("/classes", data),
 
   updateClass: (classId: string, data: Record<string, unknown>) =>

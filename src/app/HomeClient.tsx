@@ -274,7 +274,7 @@ export default function HomeClient() {
               upcomingClasses.map((c) => (
                 <div key={c.id} className="bg-green-50 rounded-2xl p-4 border border-green-100">
                   <h3 className="font-semibold text-green-900">{c.title}</h3>
-                  <p className="text-sm text-gray-600">{c.instructor_name} · {c.type} · {c.level}</p>
+                  <p className="text-sm text-gray-600">{c.type.replace('-', ' ')} · {c.level}</p>
                   <div className="mt-2 text-sm text-gray-700 grid grid-cols-2 gap-2">
                     <div>
                       <span className="text-gray-500">When</span>

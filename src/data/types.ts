@@ -6,7 +6,7 @@
  */
 
 export type UserRole = 'customer' | 'admin';
-export type SkillLevel = 'none' | 'beginner' | 'intermediate' | 'advanced' | 'all';
+export type SkillLevel = 'none' | 'beginner' | 'intermediate' | 'advanced';
 
 export interface User {
   id: string;
@@ -55,15 +55,15 @@ export interface CourtBooking {
 export interface ClassSession {
   id: string;
   title: string;
-  instructorName: string;
   type: 'junior-clinic' | 'adult-clinic' | 'private' | 'semi-private' | 'assessment' | 'group';
-  level: 'beginner' | 'intermediate' | 'advanced' | 'all';
+  level: 'beginner' | 'intermediate' | 'advanced';
   schedule: {
     dayOfWeek: string;
     startTime: string;
     endTime: string;
   };
-  maxStudents: number;
+  minAge: number;
+  maxAge: number;
   currentStudents: number;
   price: number;
   description: string;

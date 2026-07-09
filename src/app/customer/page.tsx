@@ -382,7 +382,7 @@ export default function CustomerDashboard() {
                           </div>
                           <div className="flex items-center gap-2">
                             <Users className="w-3.5 h-3.5" />
-                            {cls.current_students}/{cls.max_students} students
+                            {cls.current_students} students
                           </div>
                         </div>
                         <button
@@ -560,7 +560,7 @@ export default function CustomerDashboard() {
                                 </span>
                                 <span className="flex items-center gap-1">
                                   <Users className="w-3 h-3" />
-                                  {cls.current_students}/{cls.max_students}
+                                  {cls.current_students} students
                                 </span>
                               </div>
                             </div>
