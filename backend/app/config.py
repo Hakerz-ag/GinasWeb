@@ -94,7 +94,15 @@ class Settings(BaseSettings):
     def database_url(self) -> str:
         # Allow full DATABASE_URL_OVERRIDE override (common for cloud providers like Neon/Render)
         if self.database_url_override:
-            return self.database_url_override
+            url = self.database_url_override
+            # Ensure SSL is required for production cloud databases (Neon, Render, etc.)
+            if self.environment == "production":
+                if "?" in url:
+                    if "sslmode" not in url:
+                        url += "&sslmode=require"
+                else:
+                    url += "?sslmode=require"
+            return url
         if self.db_engine == "sqlite":
             return "sqlite:///./ginas_tennis.db"
         url = f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"

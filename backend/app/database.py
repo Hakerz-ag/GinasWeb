@@ -163,6 +163,10 @@ def init_db():
                 ('ix_payments_status', 'payments', 'status'),
                 ('ix_enrollments_status', 'class_enrollments', 'status'),
                 ('ix_chat_messages_user_id', 'chat_messages', 'user_id'),
+                ('ix_users_email', 'users', 'email'),
+                ('ix_class_sessions_day', 'class_sessions', 'day_of_week'),
+                ('ix_class_sessions_start_date', 'class_sessions', 'start_date'),
+                ('ix_payments_created_at', 'payments', 'created_at'),
             ]
             
             # Get all existing indexes

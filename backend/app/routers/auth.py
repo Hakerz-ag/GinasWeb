@@ -119,7 +119,8 @@ def login(request: Request, body: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/refresh", response_model=RefreshResponse)
-def refresh_token(body: RefreshRequest, db: Session = Depends(get_db)):
+@limiter.limit("20/minute")
+def refresh_token(request: Request, body: RefreshRequest, db: Session = Depends(get_db)):
     """Exchange a valid refresh token for a new access token + refresh token pair.
     
     This implements refresh token rotation: each refresh token can only be used once.
