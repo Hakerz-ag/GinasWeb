@@ -45,3 +45,4 @@ backend/__pycache__/
 backend/**/__pycache__/
 backend/**/*.pyc
 .vercel
+backend/ginas_tennis.db
