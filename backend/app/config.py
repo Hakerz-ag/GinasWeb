@@ -58,8 +58,10 @@ class Settings(BaseSettings):
     zelle_info: str = "ginastennisworld@gmail.com"
 
     # Email Configuration (transactional emails)
-    email_provider: str = "console"       # "console" (dev), "sendgrid", "postmark", "mailgun"
+    email_provider: str = "console"       # "console" (dev), "sendgrid", "gmail"
     sendgrid_api_key: str = ""
+    gmail_user: str = ""                  # Gmail address (e.g. ginastennisworld@gmail.com)
+    gmail_app_password: str = ""          # Gmail App Password (16 chars, no spaces)
     email_from_address: str = "noreply@ginastennisworld.com"
     email_from_name: str = "Gina's Tennis World"
     email_base_url: str = "http://localhost:3000"  # for building links in emails

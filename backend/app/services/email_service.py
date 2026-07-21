@@ -1,6 +1,9 @@
-"""Email sending service — sends transactional emails via SendGrid (or console in dev)."""
+"""Email sending service — sends transactional emails via SendGrid, Gmail SMTP, or console (dev)."""
 
 import logging
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from typing import Optional
 
 from app.config import get_settings
@@ -40,6 +43,8 @@ def send_email(
             f"To: {to_email}, Subject: {subject}"
         )
         return False
+    elif settings.email_provider == "gmail":
+        return _send_via_gmail(to_email, subject, html_body, sender_email, sender_name)
     else:
         # Fallback: log to console in development
         logger.info(
@@ -83,6 +88,62 @@ def _send_via_sendgrid(
 
     except Exception as e:
         logger.error(f"❌ Failed to send email via SendGrid: {e}")
+        return False
+
+
+def _send_via_gmail(
+    to_email: str,
+    subject: str,
+    html_body: str,
+    from_email: str,
+    from_name: str,
+) -> bool:
+    """Send email via Gmail SMTP using an App Password.
+
+    Setup:
+    1. Go to https://myaccount.google.com/security
+    2. Enable 2-Step Verification (if not already enabled)
+    3. Go to https://myaccount.google.com/apppasswords
+    4. Create an App Password for "Mail" on "Other (Custom name)" → e.g. "Ginas Tennis World"
+    5. Set GMAIL_APP_PASSWORD to the 16-character password (no spaces)
+    6. Set EMAIL_PROVIDER=gmail, GMAIL_USER=ginastennisworld@gmail.com
+    """
+    gmail_user = settings.gmail_user
+    gmail_app_password = settings.gmail_app_password
+
+    if not gmail_user or not gmail_app_password:
+        logger.error(
+            f"❌ EMAIL NOT SENT: Gmail provider selected but GMAIL_USER or GMAIL_APP_PASSWORD not set. "
+            f"To: {to_email}, Subject: {subject}"
+        )
+        return False
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"{from_name} <{gmail_user}>"
+        msg["To"] = to_email
+
+        # Add HTML part
+        html_part = MIMEText(html_body, "html")
+        msg.attach(html_part)
+
+        # Connect to Gmail SMTP
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.ehlo()
+            server.starttls()  # Secure the connection
+            server.ehlo()
+            server.login(gmail_user, gmail_app_password)
+            server.sendmail(gmail_user, to_email, msg.as_string())
+
+        logger.info(f"✅ Email sent to {to_email} via Gmail SMTP")
+        return True
+
+    except smtplib.SMTPAuthenticationError as e:
+        logger.error(f"❌ Gmail SMTP authentication failed: {e}. Check GMAIL_USER and GMAIL_APP_PASSWORD.")
+        return False
+    except Exception as e:
+        logger.error(f"❌ Failed to send email via Gmail SMTP: {e}")
         return False
 
 

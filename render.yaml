@@ -20,8 +20,12 @@ services:
       - key: FRONTEND_URL
         value: https://ginas-tennis-world-eta.vercel.app
       - key: EMAIL_PROVIDER
-        value: sendgrid
+        value: gmail
       - key: SENDGRID_API_KEY
+        sync: false
+      - key: GMAIL_USER
+        value: ginastennisworld@gmail.com
+      - key: GMAIL_APP_PASSWORD
         sync: false
       - key: CONTACT_EMAIL
         value: ginastennisworld@gmail.com
