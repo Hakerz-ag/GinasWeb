@@ -334,3 +334,40 @@ class Spotlight(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     user = relationship("User")
+
+
+# ── Contract Schedule (admin-managed class time slots) ──────────────────────
+
+class ContractScheduleSlot(Base):
+    """Individual time slot within a contract schedule day."""
+    __tablename__ = "contract_schedule_slots"
+
+    id = Column(String, primary_key=True, default=lambda: _generate_id("cslot"))
+    day_id = Column(String, ForeignKey("contract_schedule_days.id", ondelete="CASCADE"), nullable=False)
+    time = Column(String, nullable=False)          # "9:00 – 10:00 AM"
+    level = Column(String, nullable=False)          # "Beg./Adv.Beg.", "Intermediate", etc.
+    play = Column(String, default="No")             # "No", "1/2 hr" — for adult programs
+    ages = Column(String, default="")               # "7–12", "11–16" — for junior programs
+    rate = Column(String, nullable=False)            # "$570", "$660", etc.
+    sort_order = Column(Integer, default=0)          # display order within the day
+    created_at = Column(DateTime, server_default=func.now())
+
+    day = relationship("ContractScheduleDay", back_populates="slots")
+
+
+class ContractScheduleDay(Base):
+    """A day of contract schedule (e.g. Monday Adult, Tuesday Junior)."""
+    __tablename__ = "contract_schedule_days"
+
+    id = Column(String, primary_key=True, default=lambda: _generate_id("cday"))
+    day = Column(String, nullable=False)             # "Monday", "Tuesday", etc.
+    category = Column(String, nullable=False)         # "Adult" or "Junior"
+    dates = Column(String, default="")               # "Sept 14 – Dec 21"
+    off = Column(String, default="")                  # "Sept 21 & Nov 23"
+    classes = Column(Integer, default=13)             # number of classes in the session
+    sort_order = Column(Integer, default=0)          # display order
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    slots = relationship("ContractScheduleSlot", back_populates="day", cascade="all, delete-orphan",
+                          order_by="ContractScheduleSlot.sort_order")

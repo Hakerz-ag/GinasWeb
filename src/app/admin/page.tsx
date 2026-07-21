@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import LayoutShell from '@/components/LayoutShell';
-import { api, ClassOut, UserOut, OpenTimeOut, AssessmentOut, ScheduleBlockOut, ChatMessageOut, PaymentMethodConfig, EnrollmentOut } from '@/lib/api';
+import { api, ClassOut, UserOut, OpenTimeOut, AssessmentOut, ScheduleBlockOut, ChatMessageOut, PaymentMethodConfig, EnrollmentOut, ContractScheduleDayOut } from '@/lib/api';
 import {
   Users,
   Calendar,
@@ -53,7 +53,7 @@ for (let h = 6; h <= 22; h++) {
 export default function AdminDashboard() {
   const { user, isAuthenticated, loading, justLoggedOut } = useAuth();
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState<'overview' | 'users' | 'schedule' | 'bookings' | 'email' | 'opentimes' | 'scheduleblocks' | 'messages' | 'payments' | 'enrollments'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'users' | 'schedule' | 'bookings' | 'email' | 'opentimes' | 'scheduleblocks' | 'messages' | 'payments' | 'enrollments' | 'contract'>('overview');
   const [users, setUsers] = useState<UserOut[]>([]);
   const [classes, setClasses] = useState<ClassOut[]>([]);
   const [openTimes, setOpenTimes] = useState<OpenTimeOut[]>([]);
@@ -100,6 +100,11 @@ export default function AdminDashboard() {
   const [enrollments, setEnrollments] = useState<EnrollmentOut[]>([]);
   const [enrollmentsLoading, setEnrollmentsLoading] = useState(false);
   const [selectedEnrollClassId, setSelectedEnrollClassId] = useState<string | null>(null);
+  const [contractSchedule, setContractSchedule] = useState<ContractScheduleDayOut[]>([]);
+  const [contractLoading, setContractLoading] = useState(false);
+  const [editingContractDay, setEditingContractDay] = useState<ContractScheduleDayOut | null>(null);
+  const [newContractDay, setNewContractDay] = useState({ day: 'Monday', category: 'Adult', dates: '', off: '', classes: 13 });
+  const [newContractSlot, setNewContractSlot] = useState({ time: '', level: '', play: 'No', ages: '', rate: '' });
 
   // Fetch data from API on mount
   useEffect(() => {
@@ -162,9 +167,25 @@ export default function AdminDashboard() {
     }
   };
 
+  // Fetch contract schedule
+  const fetchContractSchedule = async () => {
+    setContractLoading(true);
+    try {
+      const res = await api.getContractSchedule();
+      setContractSchedule(res.data);
+    } catch (err) {
+      console.error('Failed to fetch contract schedule:', err);
+    } finally {
+      setContractLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (activeSection === 'enrollments' && isAuthenticated && user?.role === 'admin') {
       fetchEnrollments();
+    }
+    if (activeSection === 'contract' && isAuthenticated && user?.role === 'admin') {
+      fetchContractSchedule();
     }
   }, [activeSection]);
 
@@ -658,6 +679,7 @@ export default function AdminDashboard() {
               { key: 'messages' as const, label: 'Messages', icon: MessageCircle },
               { key: 'payments' as const, label: 'Payments', icon: CreditCard },
               { key: 'enrollments' as const, label: 'Enrollments', icon: Users },
+              { key: 'contract' as const, label: 'Contract Times', icon: FileText },
             ].map(tab => (
               <button key={tab.key} onClick={() => setActiveSection(tab.key)} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeSection === tab.key ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
                 <tab.icon className="w-4 h-4" />{tab.label}
@@ -1925,6 +1947,322 @@ export default function AdminDashboard() {
                   </div>
                 );
               })()}
+            </div>
+          )}
+
+          {/* ── Contract Schedule ─────────────────────────────────────────── */}
+          {activeSection === 'contract' && (
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-green-900 flex items-center gap-2"><FileText className="w-5 h-5 text-yellow-500" /> Contract Time Schedule</h2>
+                  <p className="text-gray-600 text-sm mt-1">Manage the Fall/Spring program schedule shown on the booking page.</p>
+                </div>
+                <div className="flex gap-2">
+                  {contractSchedule.length === 0 && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await api.seedContractSchedule();
+                          alert(res.data.message);
+                          fetchContractSchedule();
+                        } catch (err: any) {
+                          alert(err?.response?.data?.detail || 'Failed to seed schedule');
+                        }
+                      }}
+                      className="px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors"
+                    >
+                      🌱 Seed Fall 2026 Data
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setNewContractDay({ day: 'Monday', category: 'Adult', dates: '', off: '', classes: 13 });
+                      setEditingContractDay(null);
+                    }}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                  >
+                    + Add Day
+                  </button>
+                </div>
+              </div>
+
+              {contractLoading ? (
+                <div className="text-center py-12 text-gray-500">Loading schedule...</div>
+              ) : contractSchedule.length === 0 ? (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+                  <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-bold text-gray-700 mb-2">No Contract Schedule</h3>
+                  <p className="text-gray-500 text-sm mb-4">Click "Seed Fall 2026 Data" to populate the default schedule, or add days manually.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Group by category */}
+                  {['Adult', 'Junior'].map(category => {
+                    const days = contractSchedule.filter(d => d.category === category);
+                    if (days.length === 0) return null;
+                    return (
+                      <div key={category}>
+                        <h3 className={`text-sm font-bold mb-3 uppercase tracking-wider ${category === 'Adult' ? 'text-green-700' : 'text-blue-700'}`}>
+                          {category === 'Adult' ? '🎾' : '👦'} {category} Programs
+                        </h3>
+                        <div className="space-y-3">
+                          {days.map(day => (
+                            <div key={day.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                              <div className={`px-4 py-3 flex items-center justify-between ${category === 'Junior' ? 'bg-blue-50 border-b border-blue-100' : 'bg-green-50 border-b border-green-100'}`}>
+                                <div className="flex items-center gap-3">
+                                  <h4 className="font-bold text-green-900">{day.day}</h4>
+                                  <span className={`text-xs font-bold px-2 py-0.5 rounded ${category === 'Junior' ? 'bg-blue-200 text-blue-800' : 'bg-green-200 text-green-800'}`}>{day.category}</span>
+                                  {day.dates && <span className="text-xs text-gray-500">{day.dates}</span>}
+                                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{day.classes} classes</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => setEditingContractDay(day)}
+                                    className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-lg hover:bg-blue-200"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm(`Delete ${day.day} ${day.category} schedule?`)) return;
+                                      try {
+                                        await api.deleteContractScheduleDay(day.id);
+                                        setContractSchedule(contractSchedule.filter(d => d.id !== day.id));
+                                      } catch (err) {
+                                        console.error(err);
+                                        alert('Failed to delete');
+                                      }
+                                    }}
+                                    className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-lg hover:bg-red-200"
+                                  >
+                                    <Trash2 className="w-3 h-3 inline" /> Delete
+                                  </button>
+                                </div>
+                              </div>
+                              {day.off && <p className="px-4 pt-2 text-xs text-red-600">Off: {day.off}</p>}
+                              <div className="divide-y divide-gray-50">
+                                {day.slots.map(slot => (
+                                  <div key={slot.id} className="px-4 py-2 flex items-center justify-between hover:bg-gray-50">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-green-800 font-semibold text-sm">{slot.time}</span>
+                                      <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+                                        slot.level.includes('Adv') || slot.level.includes('advanced') || slot.level.includes('Advanced')
+                                          ? 'bg-purple-100 text-purple-700'
+                                          : slot.level.includes('Int') || slot.level.includes('int')
+                                          ? 'bg-blue-100 text-blue-700'
+                                          : 'bg-green-100 text-green-700'
+                                      }`}>{slot.level}</span>
+                                      {slot.ages && <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-medium">Ages {slot.ages}</span>}
+                                      {slot.play && slot.play !== 'No' && <span className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-medium">🎾 {slot.play} play</span>}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-green-700 font-bold text-sm">{slot.rate}</span>
+                                      <button
+                                        onClick={async () => {
+                                          try {
+                                            const res = await api.deleteContractScheduleSlot(slot.id);
+                                            setContractSchedule(contractSchedule.map(d =>
+                                              d.id === day.id ? { ...d, slots: d.slots.filter(s => s.id !== slot.id) } : d
+                                            ));
+                                          } catch (err) {
+                                            console.error(err);
+                                            alert('Failed to delete slot');
+                                          }
+                                        }}
+                                        className="text-xs text-red-500 hover:text-red-700"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              {/* Add slot form */}
+                              <div className="px-4 py-3 bg-gray-50 border-t border-gray-100">
+                                <div className="flex flex-wrap gap-2 items-end">
+                                  <div className="flex-1 min-w-[120px]">
+                                    <label className="text-xs text-gray-500">Time</label>
+                                    <input value={newContractSlot.time} onChange={e => setNewContractSlot({...newContractSlot, time: e.target.value})} placeholder="9:00 – 10:00 AM" className="w-full px-2 py-1 border rounded text-sm" />
+                                  </div>
+                                  <div className="flex-1 min-w-[100px]">
+                                    <label className="text-xs text-gray-500">Level</label>
+                                    <input value={newContractSlot.level} onChange={e => setNewContractSlot({...newContractSlot, level: e.target.value})} placeholder="Beginner" className="w-full px-2 py-1 border rounded text-sm" />
+                                  </div>
+                                  <div className="w-[70px]">
+                                    <label className="text-xs text-gray-500">Play</label>
+                                    <input value={newContractSlot.play} onChange={e => setNewContractSlot({...newContractSlot, play: e.target.value})} placeholder="No" className="w-full px-2 py-1 border rounded text-sm" />
+                                  </div>
+                                  <div className="w-[70px]">
+                                    <label className="text-xs text-gray-500">Ages</label>
+                                    <input value={newContractSlot.ages} onChange={e => setNewContractSlot({...newContractSlot, ages: e.target.value})} placeholder="7-12" className="w-full px-2 py-1 border rounded text-sm" />
+                                  </div>
+                                  <div className="w-[70px]">
+                                    <label className="text-xs text-gray-500">Rate</label>
+                                    <input value={newContractSlot.rate} onChange={e => setNewContractSlot({...newContractSlot, rate: e.target.value})} placeholder="$570" className="w-full px-2 py-1 border rounded text-sm" />
+                                  </div>
+                                  <button
+                                    onClick={async () => {
+                                      if (!newContractSlot.time || !newContractSlot.level || !newContractSlot.rate) {
+                                        alert('Time, level, and rate are required');
+                                        return;
+                                      }
+                                      try {
+                                        const res = await api.addContractScheduleSlot(day.id, {
+                                          time: newContractSlot.time,
+                                          level: newContractSlot.level,
+                                          play: newContractSlot.play || 'No',
+                                          ages: newContractSlot.ages || '',
+                                          rate: newContractSlot.rate,
+                                        });
+                                        setContractSchedule(contractSchedule.map(d =>
+                                          d.id === day.id ? res.data : d
+                                        ));
+                                        setNewContractSlot({ time: '', level: '', play: 'No', ages: '', rate: '' });
+                                      } catch (err) {
+                                        console.error(err);
+                                        alert('Failed to add slot');
+                                      }
+                                    }}
+                                    className="px-3 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700"
+                                  >
+                                    + Add Slot
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Add New Day Form */}
+              {!editingContractDay && (
+                <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                  <h3 className="text-lg font-bold text-green-900 mb-4">Add New Schedule Day</h3>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Day</label>
+                      <select value={newContractDay.day} onChange={e => setNewContractDay({...newContractDay, day: e.target.value})} className="w-full px-3 py-2 border rounded-lg text-sm">
+                        {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                      <select value={newContractDay.category} onChange={e => setNewContractDay({...newContractDay, category: e.target.value})} className="w-full px-3 py-2 border rounded-lg text-sm">
+                        <option value="Adult">Adult</option>
+                        <option value="Junior">Junior</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Dates</label>
+                      <input value={newContractDay.dates} onChange={e => setNewContractDay({...newContractDay, dates: e.target.value})} placeholder="Sept 14 – Dec 21" className="w-full px-3 py-2 border rounded-lg text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Off Days</label>
+                      <input value={newContractDay.off} onChange={e => setNewContractDay({...newContractDay, off: e.target.value})} placeholder="Nov 23 & Dec 28" className="w-full px-3 py-2 border rounded-lg text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Classes</label>
+                      <input type="number" value={newContractDay.classes} onChange={e => setNewContractDay({...newContractDay, classes: parseInt(e.target.value) || 13})} className="w-full px-3 py-2 border rounded-lg text-sm" />
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await api.createContractScheduleDay({
+                          day: newContractDay.day,
+                          category: newContractDay.category,
+                          dates: newContractDay.dates,
+                          off: newContractDay.off,
+                          classes: newContractDay.classes,
+                          slots: [],
+                        });
+                        setContractSchedule([...contractSchedule, res.data]);
+                        setNewContractDay({ day: 'Monday', category: 'Adult', dates: '', off: '', classes: 13 });
+                      } catch (err) {
+                        console.error(err);
+                        alert('Failed to create schedule day');
+                      }
+                    }}
+                    className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
+                  >
+                    Create Day
+                  </button>
+                </div>
+              )}
+
+              {/* Edit Day Modal */}
+              {editingContractDay && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                  <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-bold text-green-900">Edit {editingContractDay.day} {editingContractDay.category}</h3>
+                      <button onClick={() => setEditingContractDay(null)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Day</label>
+                        <select value={editingContractDay.day} onChange={e => setEditingContractDay({...editingContractDay, day: e.target.value})} className="w-full px-3 py-2 border rounded-lg text-sm">
+                          {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                        <select value={editingContractDay.category} onChange={e => setEditingContractDay({...editingContractDay, category: e.target.value})} className="w-full px-3 py-2 border rounded-lg text-sm">
+                          <option value="Adult">Adult</option>
+                          <option value="Junior">Junior</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Dates</label>
+                        <input value={editingContractDay.dates} onChange={e => setEditingContractDay({...editingContractDay, dates: e.target.value})} className="w-full px-3 py-2 border rounded-lg text-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Off Days</label>
+                        <input value={editingContractDay.off} onChange={e => setEditingContractDay({...editingContractDay, off: e.target.value})} className="w-full px-3 py-2 border rounded-lg text-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Number of Classes</label>
+                        <input type="number" value={editingContractDay.classes} onChange={e => setEditingContractDay({...editingContractDay, classes: parseInt(e.target.value) || 13})} className="w-full px-3 py-2 border rounded-lg text-sm" />
+                      </div>
+                    </div>
+                    <div className="flex gap-3 mt-6">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await api.updateContractScheduleDay(editingContractDay.id, {
+                              day: editingContractDay.day,
+                              category: editingContractDay.category,
+                              dates: editingContractDay.dates,
+                              off: editingContractDay.off,
+                              classes: editingContractDay.classes,
+                            });
+                            setContractSchedule(contractSchedule.map(d => d.id === editingContractDay.id ? res.data : d));
+                            setEditingContractDay(null);
+                          } catch (err) {
+                            console.error(err);
+                            alert('Failed to update');
+                          }
+                        }}
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
+                      >
+                        Save Changes
+                      </button>
+                      <button onClick={() => setEditingContractDay(null)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

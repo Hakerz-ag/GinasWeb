@@ -347,6 +347,30 @@ export interface DashboardStats {
   recent_signups: number;
 }
 
+// ── Contract Schedule ────────────────────────────────────────────────────────
+
+export interface ContractScheduleSlotOut {
+  id: string;
+  day_id: string;
+  time: string;
+  level: string;
+  play: string;
+  ages: string;
+  rate: string;
+  sort_order: number;
+}
+
+export interface ContractScheduleDayOut {
+  id: string;
+  day: string;
+  category: string;
+  dates: string;
+  off: string;
+  classes: number;
+  sort_order: number;
+  slots: ContractScheduleSlotOut[];
+}
+
 // ── API functions ───────────────────────────────────────────────────────────
 export const api = {
   // Health
@@ -611,6 +635,41 @@ export const api = {
 
   mfaDisable: (code: string) =>
     axiosInstance.post<{ message: string }>("/auth/mfa/disable", null, { params: { code } }),
+
+  // ── Contract Schedule ──────────────────────────────────────────────────
+  getContractSchedule: () =>
+    axiosInstance.get<ContractScheduleDayOut[]>("/contract-schedule"),
+
+  createContractScheduleDay: (data: {
+    day: string; category: string; dates?: string; off?: string; classes?: number; sort_order?: number;
+    slots: { time: string; level: string; play?: string; ages?: string; rate: string; sort_order?: number }[];
+  }) => axiosInstance.post<ContractScheduleDayOut>("/contract-schedule", data),
+
+  updateContractScheduleDay: (dayId: string, data: {
+    day?: string; category?: string; dates?: string; off?: string; classes?: number; sort_order?: number;
+  }) => axiosInstance.put<ContractScheduleDayOut>(`/contract-schedule/${dayId}`, data),
+
+  deleteContractScheduleDay: (dayId: string) =>
+    axiosInstance.delete<MessageResponse>(`/contract-schedule/${dayId}`),
+
+  addContractScheduleSlot: (dayId: string, data: {
+    time: string; level: string; play?: string; ages?: string; rate: string; sort_order?: number;
+  }) => axiosInstance.post<ContractScheduleDayOut>(`/contract-schedule/${dayId}/slots`, data),
+
+  updateContractScheduleSlot: (slotId: string, data: {
+    time?: string; level?: string; play?: string; ages?: string; rate?: string; sort_order?: number;
+  }) => axiosInstance.put<ContractScheduleDayOut>(`/contract-schedule/slots/${slotId}`, data),
+
+  deleteContractScheduleSlot: (slotId: string) =>
+    axiosInstance.delete<MessageResponse>(`/contract-schedule/slots/${slotId}`),
+
+  seedContractSchedule: () =>
+    axiosInstance.post<MessageResponse>("/contract-schedule/seed"),
+
+  selectContractTime: (data: {
+    slot_id?: string; day?: string; category?: string; time?: string;
+    level?: string; rate?: string; dates?: string; ages?: string; play?: string; classes?: number;
+  }) => axiosInstance.post<MessageResponse>("/contract-schedule/select", data),
 
   // ── Dashboard ─────────────────────────────────────────────────────────
   getDashboardStats: () =>

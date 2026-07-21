@@ -559,3 +559,64 @@ class DashboardStats(BaseModel):
     total_revenue: float
     unread_messages: int
     recent_signups: int
+
+
+# ── Contract Schedule ────────────────────────────────────────────────────────
+
+class ContractScheduleSlotOut(BaseModel):
+    id: str
+    day_id: str
+    time: str
+    level: str
+    play: str = "No"
+    ages: str = ""
+    rate: str
+    sort_order: int = 0
+
+
+class ContractScheduleSlotCreate(BaseModel):
+    time: str
+    level: str
+    play: str = "No"
+    ages: str = ""
+    rate: str
+    sort_order: int = 0
+
+
+class ContractScheduleSlotUpdate(BaseModel):
+    time: Optional[str] = None
+    level: Optional[str] = None
+    play: Optional[str] = None
+    ages: Optional[str] = None
+    rate: Optional[str] = None
+    sort_order: Optional[int] = None
+
+
+class ContractScheduleDayOut(BaseModel):
+    id: str
+    day: str
+    category: str          # "Adult" or "Junior"
+    dates: str = ""
+    off: str = ""
+    classes: int = 13
+    sort_order: int = 0
+    slots: List[ContractScheduleSlotOut] = []
+
+
+class ContractScheduleDayCreate(BaseModel):
+    day: str
+    category: str           # "Adult" or "Junior"
+    dates: str = ""
+    off: str = ""
+    classes: int = 13
+    sort_order: int = 0
+    slots: List[ContractScheduleSlotCreate] = []
+
+
+class ContractScheduleDayUpdate(BaseModel):
+    day: Optional[str] = None
+    category: Optional[str] = None
+    dates: Optional[str] = None
+    off: Optional[str] = None
+    classes: Optional[int] = None
+    sort_order: Optional[int] = None

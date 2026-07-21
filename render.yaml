@@ -19,3 +19,9 @@ services:
         value: '["https://ginas-tennis-world-eta.vercel.app"]'
       - key: FRONTEND_URL
         value: https://ginas-tennis-world-eta.vercel.app
+      - key: EMAIL_PROVIDER
+        value: sendgrid
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: CONTACT_EMAIL
+        value: ginastennisworld@gmail.com

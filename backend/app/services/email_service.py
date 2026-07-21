@@ -33,6 +33,13 @@ def send_email(
 
     if settings.email_provider == "sendgrid" and settings.sendgrid_api_key:
         return _send_via_sendgrid(to_email, subject, html_body, sender_email, sender_name)
+    elif settings.email_provider == "sendgrid" and not settings.sendgrid_api_key:
+        # SendGrid is configured as provider but no API key — this is a misconfiguration
+        logger.error(
+            f"❌ EMAIL NOT SENT: email_provider is 'sendgrid' but SENDGRID_API_KEY is not set. "
+            f"To: {to_email}, Subject: {subject}"
+        )
+        return False
     else:
         # Fallback: log to console in development
         logger.info(
@@ -278,3 +285,118 @@ def send_enrollment_email(to_email: str, student_name: str, class_title: str, cl
                 )
         except Exception:
                 return False
+
+
+def send_contract_time_email(
+    to_email: str,
+    name: str,
+    contract_day: str,
+    contract_category: str,
+    contract_time: str,
+    contract_level: str,
+    contract_rate: str,
+    contract_dates: str = "",
+    contract_ages: str = "",
+    contract_play: str = "",
+    contract_classes: int = 0,
+) -> bool:
+    """Send a confirmation email when someone selects a contract time slot.
+
+    This notifies both the customer and Gina about the contract time selection.
+    """
+    # Build details HTML
+    details_rows = f"""
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #374151; width: 120px;">Day:</td>
+            <td style="padding: 8px 0; color: #1f2937;">{contract_day}</td></tr>
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Program:</td>
+            <td style="padding: 8px 0; color: #1f2937;">{contract_category}</td></tr>
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Time:</td>
+            <td style="padding: 8px 0; color: #1f2937;">{contract_time}</td></tr>
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Level:</td>
+            <td style="padding: 8px 0; color: #1f2937;">{contract_level}</td></tr>
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Rate:</td>
+            <td style="padding: 8px 0; color: #1f2937;">{contract_rate}</td></tr>
+    """
+    if contract_dates:
+        details_rows += f"""
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Dates:</td>
+            <td style="padding: 8px 0; color: #1f2937;">{contract_dates}</td></tr>
+        """
+    if contract_classes:
+        details_rows += f"""
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Classes:</td>
+            <td style="padding: 8px 0; color: #1f2937;">{contract_classes}</td></tr>
+        """
+    if contract_ages:
+        details_rows += f"""
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Ages:</td>
+            <td style="padding: 8px 0; color: #1f2937;">{contract_ages}</td></tr>
+        """
+    if contract_play and contract_play != "No":
+        details_rows += f"""
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Play Time:</td>
+            <td style="padding: 8px 0; color: #1f2937;">{contract_play}</td></tr>
+        """
+
+    # Email to customer
+    user_html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #166534, #15803d); padding: 20px 30px; border-radius: 12px 12px 0 0;">
+            <h1 style="color: #facc15; margin: 0; font-size: 24px;">🎾 Contract Time Selected!</h1>
+            <p style="color: #bbf7d0; margin: 5px 0 0 0; font-size: 14px;">Gina's Tennis World</p>
+        </div>
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+            <p style="color: #374151;">Hi {name},</p>
+            <p style="color: #374151;">Your contract time selection has been received. Here are the details:</p>
+            <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border: 1px solid #bbf7d0;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    {details_rows}
+                </table>
+            </div>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
+                Gina will review your selection and confirm your spot. If you have any questions,
+                call us at 908-464-9591 or reply to this email.
+            </p>
+        </div>
+        <div style="background: #f0fdf4; padding: 15px 30px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none;">
+            <p style="color: #6b7280; font-size: 12px; margin: 0;">
+                This confirmation was sent from Gina's Tennis World website.
+            </p>
+        </div>
+    </div>
+    """
+
+    # Email to admin (Gina)
+    admin_html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #166534, #15803d); padding: 20px 30px; border-radius: 12px 12px 0 0;">
+            <h1 style="color: #facc15; margin: 0; font-size: 20px;">📋 New Contract Time Selection</h1>
+        </div>
+        <div style="background: #ffffff; padding: 20px; border: 1px solid #e5e7eb; border-top: none;">
+            <p><strong>Customer:</strong> {name} ({to_email})</p>
+            <table style="width: 100%; border-collapse: collapse;">
+                {details_rows}
+            </table>
+        </div>
+    </div>
+    """
+
+    # Send admin copy
+    try:
+        send_email(
+            to_email=settings.contact_email,
+            subject=f"Contract Time Selection — {name} — {contract_day} {contract_category} {contract_time}",
+            html_body=admin_html,
+        )
+    except Exception:
+        pass
+
+    # Send confirmation to customer
+    try:
+        return send_email(
+            to_email=to_email,
+            subject=f"Contract Time Confirmed — {contract_day} {contract_time} — Gina's Tennis World",
+            html_body=user_html,
+        )
+    except Exception:
+        return False

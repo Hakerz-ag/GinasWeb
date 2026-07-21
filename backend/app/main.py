@@ -20,6 +20,7 @@ from app.services.seed import seed_db
 from app.routers import auth, users, bookings, classes, calendar, email, opentimes, assessments, scheduleblocks, chatmessages
 from app.routers import notifications, payments, dashboard, realtime, contact, mfa
 from app.routers import spotlight
+from app.routers import contract_schedule
 
 settings = get_settings()
 
@@ -145,3 +146,4 @@ app.include_router(mfa.router, prefix="/auth/mfa", tags=["MFA"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(realtime.router, tags=["Realtime"])
 app.include_router(spotlight.router, prefix="/spotlight", tags=["Spotlight"])
+app.include_router(contract_schedule.router, tags=["Contract Schedule"])

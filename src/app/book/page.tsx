@@ -2,10 +2,10 @@
 
 import LayoutShell from '@/components/LayoutShell';
 import PaymentMethodSelector from '@/components/PaymentMethodSelector';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, Clock, Users, MapPin, Info, CheckCircle, Award, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { api } from '@/lib/api';
+import { api, ContractScheduleDayOut } from '@/lib/api';
 
 const allTimeSlots = [
   '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM',
@@ -37,58 +37,85 @@ const courts = [
 
 const openTimeRate = 45; // per hour for open time rental
 
-// 2026-2027 Contract Time Schedule
-const contractSchedule = [
-  { day: 'Monday', dates: 'Sept 21 – Apr 19', off: 'Dec 28', slots: [
-    { time: '9:00 – 10:00 AM', rate: '$1,800', court: 'Court 3' },
-    { time: '2:30 – 4:00 PM', rate: '$2,430 – $2,700', court: 'Court 1, 2, 3' },
-    { time: '7:30 – 8:30 PM', rate: '$1,980', court: 'Court 3' },
-    { time: '8:30 – 9:30/10:00 PM', rate: '$1,800 – $2,700', court: 'Court 1' },
+// Fallback schedule data — used when API is unavailable
+const fallbackSchedule = [
+  // ── ADULT PROGRAMS ──────────────────────────────────────────────────
+  { day: 'Monday', category: 'Adult', dates: 'Sept 14 – Dec 21', off: 'Sept 21 & Nov 23', classes: 13, slots: [
+    { time: '9:00 – 10:00 AM', level: 'Beg./Adv.Beg.', play: 'No', rate: '$570' },
+    { time: '11:30 AM – 1:00 PM', level: 'Intermediate', play: '1/2 hr', rate: '$660' },
+    { time: '1:00 – 2:30 PM', level: 'Intermediate', play: '1/2 hr', rate: '$660' },
+    { time: '6:00 – 7:30 PM', level: 'Intermediate', play: '1/2 hr', rate: '$660' },
   ]},
-  { day: 'Tuesday', dates: 'Sept 22 – Apr 20', off: 'Dec 29', slots: [
-    { time: '9:00 – 10:30 AM', rate: '$2,430', court: 'Court 2' },
-    { time: '10:30 – 11:30 AM', rate: '$1,800', court: 'Court 3' },
-    { time: '2:30 – 4:00 PM', rate: '$2,430 – $2,700', court: 'Court 1 & 3' },
-    { time: '7:00 – 8:30 PM', rate: '$2,970', court: 'Court 3' },
-    { time: '8:30 – 10:00 PM', rate: '$2,700', court: 'Court 1' },
+  { day: 'Tuesday', category: 'Adult', dates: 'Sept 15 – Dec 15', off: 'Nov 24', classes: 13, slots: [
+    { time: '12:00 – 1:00 PM', level: 'Beginner', play: 'No', rate: '$570' },
+    { time: '1:00 – 2:30 PM', level: 'Int./Adv.', play: '1/2 hr', rate: '$660' },
+    { time: '6:00 – 7:00 PM', level: 'Beginner', play: 'No', rate: '$570' },
+    { time: '6:00 – 7:00 PM', level: 'Intermediate', play: 'No', rate: '$570' },
   ]},
-  { day: 'Wednesday', dates: 'Sept 16 – Apr 28', off: 'Nov 25, Dec 23 & 30', slots: [
-    { time: '9:00 – 10:30 AM', rate: '$2,430', court: 'Court 1' },
-    { time: '10:30 AM – 12:00 PM', rate: '$2,430', court: 'Court 1' },
-    { time: '1:00/1:30 – 2:00/2:30 PM', rate: '$1,620 – $2,430', court: 'Court 1 & 2 / $1,800 Court 3' },
-    { time: '2:30 – 3:30/4:00 PM', rate: '$1,620 – $2,430', court: 'Court 1 & 2 / $1,800 – $2,700 Court 3' },
-    { time: '4:00 – 5:00 PM', rate: '$1,800', court: 'Court 1 & 2' },
-    { time: '4:00 – 5:00/5:30 PM', rate: '$1,980 – $2,970', court: 'Court 3' },
-    { time: '5:00 – 6:00 PM', rate: '$1,800', court: 'Court 1' },
-    { time: '6:00 – 7:00 PM', rate: '$1,800', court: 'Court 1' },
-    { time: '7:00 – 8:00 PM', rate: '$1,980', court: 'Court 3' },
-    { time: '8:00 – 9:00 PM', rate: '$1,980', court: 'Court 3' },
-    { time: '9:00 – 10:00/10:30 PM', rate: '$1,800 – $2,700', court: 'Court 2' },
+  { day: 'Thursday', category: 'Adult', dates: 'Sept 17 – Dec 17', off: 'Nov 5 & 26', classes: 12, slots: [
+    { time: '12:00 – 1:00 PM', level: 'Intermediate', play: 'No', rate: '$530' },
+    { time: '1:00 – 2:30 PM', level: 'Adv.Beg./Int.', play: '1/2 hr', rate: '$620' },
+    { time: '6:00 – 7:00 PM', level: 'Adv.Beg./Int.', play: 'No', rate: '$530' },
   ]},
-  { day: 'Thursday', dates: 'Sept 17 – Apr 29', off: 'Nov 26, Dec 24 & 31', slots: [
-    { time: '9:00 – 10:00 AM', rate: '$1,800', court: 'Court 3' },
-    { time: '1:30 – 2:30/3:00 PM', rate: '$1,800 – $2,700', court: 'Court 3' },
-    { time: '2:30/3:00 – 4:00 PM', rate: '$1,800 – $2,700', court: 'Court 3' },
-    { time: '8:30 – 9:30/10:00 PM', rate: '$1,980 – $2,970', court: 'Court 3' },
+  { day: 'Friday', category: 'Adult', dates: 'Sept 18 – Dec 18', off: 'Nov 6 & 27', classes: 12, slots: [
+    { time: '12:00 – 1:00 PM', level: 'Beginner', play: 'No', rate: '$530' },
+    { time: '1:00 – 2:30 PM', level: 'Intermediate', play: '1/2 hr', rate: '$620' },
+    { time: '6:30 – 8:00 PM', level: 'Int./Adv.', play: '1/2 hr', rate: '$620' },
   ]},
-  { day: 'Friday', dates: 'Sept 18 – Apr 30', off: 'Nov 27, Dec 25 & Jan 1', slots: [
-    { time: '9:00 – 10:00 AM', rate: '$1,620', court: 'Court 2' },
-    { time: '8:00 – 9:00/9:30 PM', rate: '$1,800 – $2,700', court: 'Court 2' },
-    { time: '9:00 – 10:00 PM', rate: '$1,980', court: 'Court 3' },
+  { day: 'Saturday', category: 'Adult', dates: 'Sept 19 – Dec 19', off: 'Nov 28', classes: 13, slots: [
+    { time: '10:30 – 11:30 AM', level: 'Beg./Adv.Beg.', play: 'No', rate: '$570' },
+    { time: '11:30 AM – 12:30 PM', level: 'Adv. Beginner', play: 'No', rate: '$570' },
+    { time: '1:30 – 2:30 PM', level: 'Beginner', play: 'No', rate: '$570' },
+    { time: '2:30 – 4:00 PM', level: 'Advanced', play: '1/2 hr', rate: '$660' },
   ]},
-  { day: 'Saturday', dates: 'Sept 19 – Apr 17', off: 'Dec 26', slots: [
-    { time: '8:00 – 9:00 AM', rate: '$900 (alt. weeks)', court: 'Court 1' },
-    { time: '5:00 – 6:00 PM', rate: '$1,800', court: 'Court 2' },
-    { time: '5:30 – 7:00 PM', rate: '$2,970', court: 'Court 3' },
-    { time: '6:00 – 7:00/7:30 PM', rate: '$1,800 – $2,700', court: 'Court 1 & 2' },
-    { time: '7:00 – 8:00/8:30 PM', rate: '$1,800 – $2,700', court: 'Court 1 & 2' },
+  { day: 'Sunday', category: 'Adult', dates: 'Sept 20 – Dec 20', off: 'Nov 29', classes: 13, slots: [
+    { time: '10:30 – 11:30 AM', level: 'Adv. Beginner', play: 'No', rate: '$570' },
+    { time: '12:30 – 1:30 PM', level: 'Beg./Adv.Beg.', play: 'No', rate: '$570' },
+    { time: '1:30 – 2:30 PM', level: 'Intermediate', play: 'No', rate: '$570' },
+    { time: '4:00 – 5:00 PM', level: 'Intermediate', play: 'No', rate: '$570' },
+    { time: '4:00 – 5:00 PM', level: 'Beg./Adv.Beg.', play: 'No', rate: '$570' },
+    { time: '5:00 – 6:30 PM', level: 'Advanced', play: '1/2 hr', rate: '$660' },
   ]},
-  { day: 'Sunday', dates: 'Sept 20 – Apr 25', off: 'Dec 27 & Mar 28', slots: [
-    { time: '7:30/8:00 – 9:00 AM', rate: '$1,980 – $2,970', court: 'Court 3' },
-    { time: '8:00 – 9:00 AM', rate: '$1,800', court: 'Court 2' },
-    { time: '9:30 – 10:30 AM', rate: '$1,800', court: 'Court 1' },
-    { time: '8:00 – 9:00/9:30 PM', rate: '$1,980 – $2,970', court: 'Court 3' },
-    { time: '9:00 – 10:00/10:30 PM', rate: '$1,800 – $2,700', court: 'Court 1 & 2' },
+  // ── JUNIOR PROGRAMS ─────────────────────────────────────────────────
+  { day: 'Monday', category: 'Junior', dates: 'Sept 14 – Dec 21', off: 'Sept 21 & Nov 23', classes: 13, slots: [
+    { time: '4:00 – 5:00 PM', level: 'Beg./Adv.Beg.', ages: '7–12', rate: '$520' },
+    { time: '5:00 – 6:00 PM', level: 'Intermediate', ages: '11–16', rate: '$520' },
+    { time: '5:00 – 6:00 PM', level: 'Advanced', ages: '12–17', rate: '$520' },
+  ]},
+  { day: 'Tuesday', category: 'Junior', dates: 'Sept 15 – Dec 15', off: 'Nov 24', classes: 13, slots: [
+    { time: '4:00 – 5:00 PM', level: 'Beginner', ages: '8–12', rate: '$520' },
+    { time: '4:00 – 5:00 PM', level: 'Adv. Beginner', ages: '9–13', rate: '$520' },
+    { time: '5:00 – 6:00 PM', level: 'Intermediate', ages: '10–15', rate: '$520' },
+    { time: '5:00 – 6:00 PM', level: 'Advanced', ages: '12–17', rate: '$520' },
+  ]},
+  { day: 'Thursday', category: 'Junior', dates: 'Sept 17 – Dec 17', off: 'Nov 5 & 26', classes: 12, slots: [
+    { time: '4:00 – 5:00 PM', level: 'Beginner', ages: '5–8', rate: '$480' },
+    { time: '4:00 – 5:00 PM', level: 'Adv. Beginner', ages: '9–14', rate: '$480' },
+    { time: '5:00 – 6:00 PM', level: 'Older Beginner', ages: '10–15', rate: '$480' },
+    { time: '5:00 – 6:00 PM', level: 'Intermediate', ages: '11–15', rate: '$480' },
+  ]},
+  { day: 'Friday', category: 'Junior', dates: 'Sept 18 – Dec 18', off: 'Nov 6 & 27', classes: 12, slots: [
+    { time: '3:30 – 4:30 PM', level: 'Beginner', ages: '8–12', rate: '$480' },
+    { time: '3:30 – 4:30 PM', level: 'Adv. Beginner', ages: '9–13', rate: '$480' },
+    { time: '4:30 – 5:30 PM', level: 'Beg./Adv.Beg.', ages: '10–16', rate: '$480' },
+    { time: '4:30 – 5:30 PM', level: 'Intermediate', ages: '11–16', rate: '$480' },
+    { time: '5:30 – 6:30 PM', level: 'Int./Advanced', ages: '13–18', rate: '$480' },
+  ]},
+  { day: 'Saturday', category: 'Junior', dates: 'Sept 19 – Dec 19', off: 'Nov 28', classes: 13, slots: [
+    { time: '10:30 – 11:30 AM', level: 'Beg./Adv.Beg.', ages: '7–11', rate: '$520' },
+    { time: '11:30 AM – 12:30 PM', level: 'Adv.Beg./Int.', ages: '11–16', rate: '$520' },
+    { time: '12:30 – 1:30 PM', level: 'Older Beginner', ages: '11–16', rate: '$520' },
+    { time: '12:30 – 1:30 PM', level: 'Intermediate', ages: '13–17', rate: '$520' },
+    { time: '1:30 – 2:30 PM', level: 'Beginner', ages: '5–9', rate: '$520' },
+    { time: '2:30 – 4:00 PM', level: 'Advanced', ages: '14–18', rate: '$780' },
+  ]},
+  { day: 'Sunday', category: 'Junior', dates: 'Sept 20 – Dec 20', off: 'Nov 29', classes: 13, slots: [
+    { time: '10:30 – 11:30 AM', level: 'Beginner', ages: '5–9', rate: '$520' },
+    { time: '11:30 AM – 12:30 PM', level: 'Adv.Beg./Int.', ages: '10–14', rate: '$520' },
+    { time: '12:30 – 1:30 PM', level: 'Adv. Beg.', ages: '6–9', rate: '$520' },
+    { time: '1:30 – 2:30 PM', level: 'Beginner', ages: '8–12', rate: '$520' },
+    { time: '2:30 – 4:00 PM', level: 'Intermediate', ages: '14–18', rate: '$780' },
+    { time: '2:30 – 4:00 PM', level: 'Advanced', ages: '14–18', rate: '$780' },
   ]},
 ];
 
@@ -109,6 +136,8 @@ export default function BookCourtPage() {
   // Court rental is always open time now (no contract option)
   const [ballMachine, setBallMachine] = useState(false);
   const [assessmentNotes, setAssessmentNotes] = useState('');
+  // Contract schedule from API (fallback to hardcoded)
+  const [contractSchedule, setContractSchedule] = useState<ContractScheduleDayOut[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -117,6 +146,20 @@ export default function BookCourtPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  // Fetch contract schedule from API on mount
+  useEffect(() => {
+    api.getContractSchedule()
+      .then(res => {
+        if (res.data && res.data.length > 0) {
+          setContractSchedule(res.data);
+        }
+        // If empty, contractSchedule stays as [] and the fallbackSchedule is used in the render
+      })
+      .catch(err => {
+        console.error('Failed to fetch contract schedule:', err);
+      });
+  }, []);
 
   const handleAssessmentSubmit = async () => {
     if (!isAuthenticated || !user) return;
@@ -568,35 +611,70 @@ export default function BookCourtPage() {
                   </div>
                 </div>
 
-                {/* 2026-2027 Contract Time Schedule */}
+                {/* Program Schedule */}
                 <div className="mt-6">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3">2026–2027 Contract Time Schedule</h3>
-                  <p className="text-xs text-gray-500 mb-3">Select a contract time to pre-fill your booking. Available times are shown below — once a time is approved by Gina, it will no longer appear.</p>
-                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-                    {contractSchedule.map(day => (
-                      <div key={day.day} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                        <div className="bg-green-50 px-4 py-2 flex items-center justify-between border-b border-green-100">
-                          <h4 className="font-bold text-green-900">{day.day}</h4>
-                          <span className="text-xs text-gray-500">{day.dates}</span>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Program Schedule</h3>
+                  <p className="text-xs text-gray-500 mb-3">Select a class time to pre-fill your booking. Adult and Junior programs available.</p>
+                  <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                    {(contractSchedule.length > 0 ? contractSchedule : fallbackSchedule).map((day, dayIdx) => (
+                      <div key={`${day.day}-${day.category}-${dayIdx}`} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                        <div className={`px-4 py-2 flex items-center justify-between border-b ${day.category === 'Junior' ? 'bg-blue-50 border-blue-100' : 'bg-green-50 border-green-100'}`}>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-bold text-green-900">{day.day}</h4>
+                            <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${day.category === 'Junior' ? 'bg-blue-200 text-blue-800' : 'bg-green-200 text-green-800'}`}>{day.category}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500">{day.dates}</span>
+                            <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{day.classes} classes</span>
+                          </div>
                         </div>
                         {day.off && <p className="px-4 pt-2 text-xs text-red-600">Off: {day.off}</p>}
                         <div className="divide-y divide-gray-100">
                           {day.slots.map((slot, idx) => (
                             <button
                               key={idx}
-                              onClick={() => {
-                                // Pre-fill the booking form with this time slot info
-                                // Parse the time range to get start time
+                              onClick={async () => {
                                 const startTime = slot.time.split('–')[0].trim().split(' ').slice(0, 2).join(' ');
                                 setSelectedTime(startTime);
-                                setNotes(prev => prev ? prev : `${day.day} contract time: ${slot.time} on ${slot.court}`);
+                                setNotes(prev => prev ? prev : `${day.day} ${day.category}: ${slot.level} — ${slot.time}`);
+                                // Send contract time selection email if authenticated
+                                if (isAuthenticated && user) {
+                                  try {
+                                    await api.selectContractTime({
+                                      slot_id: ('id' in slot ? (slot as any).id : undefined) as string | undefined,
+                                      day: day.day,
+                                      category: day.category,
+                                      time: slot.time,
+                                      level: slot.level,
+                                      rate: slot.rate,
+                                      dates: day.dates,
+                                      ages: 'ages' in slot ? slot.ages : '',
+                                      play: 'play' in slot ? slot.play : '',
+                                      classes: day.classes,
+                                    });
+                                  } catch (err) {
+                                    console.error('Failed to send contract time selection email:', err);
+                                  }
+                                }
                               }}
                               className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-green-50 transition-colors group"
                             >
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <span className="text-green-800 font-semibold text-sm">{slot.time}</span>
-                                  <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">{slot.court}</span>
+                                  <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+                                    slot.level.includes('Adv') || slot.level.includes('advanced') || slot.level.includes('Advanced')
+                                      ? 'bg-purple-100 text-purple-700'
+                                      : slot.level.includes('Int') || slot.level.includes('int')
+                                      ? 'bg-blue-100 text-blue-700'
+                                      : 'bg-green-100 text-green-700'
+                                  }`}>{slot.level}</span>
+                                  {'ages' in slot && (
+                                    <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-medium">Ages {slot.ages}</span>
+                                  )}
+                                  {'play' in slot && slot.play !== 'No' && (
+                                    <span className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-medium">🎾 {slot.play} play</span>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
