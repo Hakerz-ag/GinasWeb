@@ -34,11 +34,21 @@ export default function ClassesPage() {
   const [showKidSelector, setShowKidSelector] = useState(false);
   const [selectedKids, setSelectedKids] = useState<string[]>([]);
   const [subAccounts, setSubAccounts] = useState<SubAccountOut[]>([]);
-  // First/second choice for day/time
+  // First/second/third choice for day/time
   const [firstChoiceDay, setFirstChoiceDay] = useState('');
   const [firstChoiceTime, setFirstChoiceTime] = useState('');
   const [secondChoiceDay, setSecondChoiceDay] = useState('');
   const [secondChoiceTime, setSecondChoiceTime] = useState('');
+  const [thirdChoiceDay, setThirdChoiceDay] = useState('');
+  const [thirdChoiceTime, setThirdChoiceTime] = useState('');
+
+  // Class time options: 9 AM to 8 PM
+  const classTimeOptions = [
+    '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
+    '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM',
+    '3:00 PM', '3:15 PM', '3:30 PM', '4:00 PM', '4:30 PM',
+    '5:00 PM', '5:30 PM', '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM',
+  ];
 
   // Determine if user has completed assessment and their skill level
   const assessmentCompleted = user?.assessment_completed ?? false;
@@ -152,7 +162,7 @@ export default function ClassesPage() {
 
   // Filter classes
   const filtered = classes.filter((cls) => {
-    if (levelFilter !== 'all' && cls.level !== levelFilter) return false;
+    if (levelFilter !== 'all' && !cls.level.split(',').map(l => l.trim()).includes(levelFilter)) return false;
     if (typeFilter !== 'all' && cls.type !== typeFilter) return false;
     if (seasonFilter !== 'all' && cls.season !== seasonFilter) return false;
     return true;
@@ -198,7 +208,7 @@ export default function ClassesPage() {
           <Filter className="w-4 h-4 text-gray-400 shrink-0" />
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-gray-500 uppercase">Level:</span>
-            {['all', 'beginner', 'adv-beg', 'intermediate', 'int-adv', 'advanced'].map((l) => (
+            {['all', 'novice', 'beginner', 'adv-beg', 'intermediate', 'advanced', 'pro'].map((l) => (
               <button
                 key={l}
                 onClick={() => setLevelFilter(l)}
@@ -208,7 +218,7 @@ export default function ClassesPage() {
                     : 'bg-gray-100 text-gray-600 hover:bg-green-50'
                 }`}
               >
-                {l === 'all' ? 'All Levels' : l === 'adv-beg' ? 'Adv. Beg.' : l === 'int-adv' ? 'Int./Adv.' : l.charAt(0).toUpperCase() + l.slice(1)}
+                {l === 'all' ? 'All Levels' : l === 'adv-beg' ? 'Adv. Beg.' : l.charAt(0).toUpperCase() + l.slice(1)}
               </button>
             ))}
           </div>
@@ -288,16 +298,20 @@ export default function ClassesPage() {
                           </span>
                         )}
                       </div>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                        cls.level === 'beginner' ? 'bg-green-100 text-green-700'
-                        : cls.level === 'adv-beg' ? 'bg-emerald-100 text-emerald-700'
-                        : cls.level === 'intermediate' ? 'bg-blue-100 text-blue-700'
-                        : cls.level === 'int-adv' ? 'bg-indigo-100 text-indigo-700'
-                        : cls.level === 'advanced' ? 'bg-purple-100 text-purple-700'
-                        : 'bg-gray-100 text-gray-700'
-                      }`}>
-                        {cls.level === 'adv-beg' ? 'Adv. Beg.' : cls.level === 'int-adv' ? 'Int./Adv.' : cls.level.charAt(0).toUpperCase() + cls.level.slice(1)}
-                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {cls.level.split(',').map((l: string) => {
+                          const level = l.trim();
+                          const color = level === 'novice' ? 'bg-slate-100 text-slate-700'
+                            : level === 'beginner' ? 'bg-green-100 text-green-700'
+                            : level === 'adv-beg' ? 'bg-emerald-100 text-emerald-700'
+                            : level === 'intermediate' ? 'bg-blue-100 text-blue-700'
+                            : level === 'advanced' ? 'bg-purple-100 text-purple-700'
+                            : level === 'pro' ? 'bg-amber-100 text-amber-700'
+                            : 'bg-gray-100 text-gray-700';
+                          const label = level === 'adv-beg' ? 'Adv. Beg.' : level.charAt(0).toUpperCase() + level.slice(1);
+                          return <span key={level} className={`text-xs font-bold px-2 py-0.5 rounded-full ${color}`}>{label}</span>;
+                        })}
+                      </div>
                     </div>
                     <h3 className="font-bold text-white text-lg">{cls.title}</h3>
                   </div>
@@ -508,38 +522,49 @@ export default function ClassesPage() {
                   💳 Payment is required to confirm your enrollment.
                 </p>
               </div>
-              {/* First and Second Choice */}
+              {/* First, Second, Third Choice */}
               <div className="mb-4">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">Preferred Schedule (Optional)</h3>
-                <p className="text-xs text-gray-500 mb-3">If your first choice is full, we'll try your second choice.</p>
-                <div className="grid grid-cols-2 gap-3">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">Schedule Preferences</h3>
+                <p className="text-xs text-gray-500 mb-3">Choose your preferred day and time. If your first choice is full, we'll try your next choices.</p>
+                <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-medium text-gray-600">1st Choice Day</label>
-                    <select value={firstChoiceDay} onChange={e => setFirstChoiceDay(e.target.value)} className="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm">
-                      <option value="">Select day</option>
-                      {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                    <label className="text-xs font-semibold text-green-800 mb-1 block">First Choice</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <select value={firstChoiceDay} onChange={e => setFirstChoiceDay(e.target.value)} className="p-2 border border-gray-300 rounded-lg text-sm">
+                        <option value="">Select day</option>
+                        {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                      <select value={firstChoiceTime} onChange={e => setFirstChoiceTime(e.target.value)} className="p-2 border border-gray-300 rounded-lg text-sm">
+                        <option value="">Select time</option>
+                        {classTimeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-600">1st Choice Time</label>
-                    <select value={firstChoiceTime} onChange={e => setFirstChoiceTime(e.target.value)} className="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm">
-                      <option value="">Select time</option>
-                      {['6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM','9:30 PM','10:00 PM'].map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
+                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Second Choice</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <select value={secondChoiceDay} onChange={e => setSecondChoiceDay(e.target.value)} className="p-2 border border-gray-300 rounded-lg text-sm">
+                        <option value="">Select day</option>
+                        {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                      <select value={secondChoiceTime} onChange={e => setSecondChoiceTime(e.target.value)} className="p-2 border border-gray-300 rounded-lg text-sm">
+                        <option value="">Select time</option>
+                        {classTimeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-600">2nd Choice Day</label>
-                    <select value={secondChoiceDay} onChange={e => setSecondChoiceDay(e.target.value)} className="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm">
-                      <option value="">Select day</option>
-                      {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600">2nd Choice Time</label>
-                    <select value={secondChoiceTime} onChange={e => setSecondChoiceTime(e.target.value)} className="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm">
-                      <option value="">Select time</option>
-                      {['6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM','9:30 PM','10:00 PM'].map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
+                    <label className="text-xs font-semibold text-gray-500 mb-1 block">Third Choice</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <select value={thirdChoiceDay} onChange={e => setThirdChoiceDay(e.target.value)} className="p-2 border border-gray-300 rounded-lg text-sm">
+                        <option value="">Select day</option>
+                        {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                      <select value={thirdChoiceTime} onChange={e => setThirdChoiceTime(e.target.value)} className="p-2 border border-gray-300 rounded-lg text-sm">
+                        <option value="">Select time</option>
+                        {classTimeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
