@@ -306,14 +306,21 @@ export default function AdminDashboard() {
     setEmailSending(true);
     try {
       const res = await api.sendEmail({ days: emailDays, times: emailTimes, subject: emailSubject, body: emailBody, send_to_all: emailSendAll });
-      setEmailSent(true);
-      setEmailResult(res.data?.message || `Email sent to ${res.data?.recipient_count || 0} recipient(s)!`);
-      setTimeout(() => { setEmailSent(false); setEmailResult(''); }, 5000);
+      const data = res.data;
+      if (data?.sent === false) {
+        // API returned sent: false — show as error
+        setEmailSent(true);
+        setEmailResult(data?.message || 'Failed to send email.');
+      } else {
+        setEmailSent(true);
+        setEmailResult(data?.message || `Email sent to ${data?.recipient_count || 0} recipient(s)!`);
+      }
+      setTimeout(() => { setEmailSent(false); setEmailResult(''); }, 6000);
     } catch (err: any) {
       console.error('Failed to send email:', err);
       setEmailSent(true);
       setEmailResult(err?.response?.data?.detail || 'Failed to send email. Please try again.');
-      setTimeout(() => { setEmailSent(false); setEmailResult(''); }, 5000);
+      setTimeout(() => { setEmailSent(false); setEmailResult(''); }, 6000);
     } finally {
       setEmailSending(false);
     }
@@ -1376,7 +1383,14 @@ export default function AdminDashboard() {
                   <textarea value={emailBody} onChange={e => setEmailBody(e.target.value)} placeholder="e.g., Due to inclement weather, the facility will be closed on Monday, June 2. All classes and court bookings are cancelled. We will reschedule your session." rows={5} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none resize-none" />
                 </div>
                 {emailSent && (
-                  <div className="mb-4 bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-600" /><span className="text-green-700 font-medium">{emailResult || 'Email sent successfully!'}</span></div>
+                  <div className={`mb-4 rounded-xl p-4 flex items-center gap-2 ${emailResult.includes('Failed') || emailResult.includes('No students') ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
+                    {emailResult.includes('Failed') || emailResult.includes('No students') ? (
+                      <X className="w-5 h-5 text-red-600" />
+                    ) : (
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                    )}
+                    <span className={`font-medium ${emailResult.includes('Failed') || emailResult.includes('No students') ? 'text-red-700' : 'text-green-700'}`}>{emailResult || 'Email sent successfully!'}</span>
+                  </div>
                 )}
                 <button onClick={handleSendEmail} disabled={!emailSubject || !emailBody || emailSending} className={`btn-primary flex items-center gap-2 ${(!emailSubject || !emailBody || emailSending) ? 'opacity-50 cursor-not-allowed' : ''}`}><Send className="w-4 h-4" /> {emailSending ? 'Sending...' : 'Send Email'}</button>
               </div>
