@@ -70,6 +70,8 @@ export default function AdminDashboard() {
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
   const [emailSent, setEmailSent] = useState(false);
+  const [emailResult, setEmailResult] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
   const [emailSendAll, setEmailSendAll] = useState(false);
   const [openTimeDay, setOpenTimeDay] = useState('Monday');
   const [openTimeStart, setOpenTimeStart] = useState('9:00 AM');
@@ -301,11 +303,20 @@ export default function AdminDashboard() {
   };
 
   const handleSendEmail = async () => {
+    setEmailSending(true);
     try {
-      await api.sendEmail({ days: emailDays, times: emailTimes, subject: emailSubject, body: emailBody, send_to_all: emailSendAll });
+      const res = await api.sendEmail({ days: emailDays, times: emailTimes, subject: emailSubject, body: emailBody, send_to_all: emailSendAll });
       setEmailSent(true);
-      setTimeout(() => setEmailSent(false), 3000);
-    } catch (err) { console.error('Failed to send email:', err); }
+      setEmailResult(res.data?.message || `Email sent to ${res.data?.recipient_count || 0} recipient(s)!`);
+      setTimeout(() => { setEmailSent(false); setEmailResult(''); }, 5000);
+    } catch (err: any) {
+      console.error('Failed to send email:', err);
+      setEmailSent(true);
+      setEmailResult(err?.response?.data?.detail || 'Failed to send email. Please try again.');
+      setTimeout(() => { setEmailSent(false); setEmailResult(''); }, 5000);
+    } finally {
+      setEmailSending(false);
+    }
   };
 
   // ── Sub-account profile panel ──────────────────────────────────────────
@@ -1311,6 +1322,12 @@ export default function AdminDashboard() {
                             setEmailDays(classDays);
                           }} className="px-4 py-2 rounded-lg text-sm font-medium bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors">📋 Class Days Only</button>
                         )}
+                        {contractSchedule.length > 0 && (
+                          <button onClick={() => {
+                            const contractDays = Array.from(new Set(contractSchedule.map(d => d.day)));
+                            setEmailDays(contractDays);
+                          }} className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors">🎾 Contract Days</button>
+                        )}
                       </div>
                     </div>
                     <div className="mb-4">
@@ -1332,6 +1349,20 @@ export default function AdminDashboard() {
                             setEmailTimes(classTimes);
                           }} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors">📋 Class Times Only</button>
                         )}
+                        {contractSchedule.length > 0 && (
+                          <button onClick={() => {
+                            const contractTimes = Array.from(new Set(contractSchedule.flatMap(d => d.slots.map(s => {
+                              // Extract start time from slot time like "9:00 – 10:00 AM"
+                              const timeStr = s.time || '';
+                              const firstPart = timeStr.split('–')[0].trim();
+                              const ampm = timeStr.includes('PM') ? 'PM' : timeStr.includes('AM') ? 'AM' : '';
+                              if (firstPart.includes('AM') || firstPart.includes('PM')) return firstPart;
+                              if (ampm) return `${firstPart} ${ampm}`;
+                              return firstPart;
+                            }))));
+                            setEmailTimes(contractTimes);
+                          }} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors">🎾 Contract Times</button>
+                        )}
                       </div>
                     </div>
                   </>
@@ -1345,9 +1376,9 @@ export default function AdminDashboard() {
                   <textarea value={emailBody} onChange={e => setEmailBody(e.target.value)} placeholder="e.g., Due to inclement weather, the facility will be closed on Monday, June 2. All classes and court bookings are cancelled. We will reschedule your session." rows={5} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none resize-none" />
                 </div>
                 {emailSent && (
-                  <div className="mb-4 bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-600" /><span className="text-green-700 font-medium">Email sent successfully!</span></div>
+                  <div className="mb-4 bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-600" /><span className="text-green-700 font-medium">{emailResult || 'Email sent successfully!'}</span></div>
                 )}
-                <button onClick={handleSendEmail} disabled={!emailSubject || !emailBody} className={`btn-primary flex items-center gap-2 ${(!emailSubject || !emailBody) ? 'opacity-50 cursor-not-allowed' : ''}`}><Send className="w-4 h-4" /> Send Email</button>
+                <button onClick={handleSendEmail} disabled={!emailSubject || !emailBody || emailSending} className={`btn-primary flex items-center gap-2 ${(!emailSubject || !emailBody || emailSending) ? 'opacity-50 cursor-not-allowed' : ''}`}><Send className="w-4 h-4" /> {emailSending ? 'Sending...' : 'Send Email'}</button>
               </div>
             </div>
           )}

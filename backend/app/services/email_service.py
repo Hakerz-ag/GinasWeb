@@ -461,3 +461,73 @@ def send_contract_time_email(
         )
     except Exception:
         return False
+
+
+def send_broadcast_email(
+    recipients: list,
+    subject: str,
+    body: str,
+    from_name: str = None,
+) -> dict:
+    """Send an email to multiple recipients (broadcast).
+
+    Used by the admin to notify students about closures, schedule changes, etc.
+
+    Args:
+        recipients: List of dicts with 'email' and 'name' keys.
+        subject: Email subject line.
+        body: Plain text message from Gina.
+        from_name: Sender display name (defaults to settings).
+
+    Returns:
+        Dict with 'sent_count', 'failed_count', and 'failed_emails'.
+    """
+    sender_name = from_name or settings.email_from_name
+    sent_count = 0
+    failed_count = 0
+    failed_emails = []
+
+    for recipient in recipients:
+        to_email = recipient.get("email", "")
+        name = recipient.get("name", "Student")
+
+        # Build a nice HTML email from the plain text body
+        html_body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #166534, #15803d); padding: 20px 30px; border-radius: 12px 12px 0 0;">
+                <h1 style="color: #facc15; margin: 0; font-size: 22px;">🎾 Message from Gina's Tennis World</h1>
+            </div>
+            <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+                <p style="color: #374151;">Hi {name},</p>
+                <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; border: 1px solid #bbf7d0; margin: 16px 0;">
+                    <p style="color: #374151; line-height: 1.6; white-space: pre-wrap;">{body}</p>
+                </div>
+                <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
+                    If you have any questions, call us at 908-464-9591 or reply to this email.
+                </p>
+            </div>
+            <div style="background: #f0fdf4; padding: 15px 30px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none;">
+                <p style="color: #6b7280; font-size: 12px; margin: 0;">
+                    This message was sent from Gina's Tennis World. You're receiving this because you're enrolled in one of our programs.
+                </p>
+            </div>
+        </div>
+        """
+
+        success = send_email(
+            to_email=to_email,
+            subject=subject,
+            html_body=html_body,
+            from_name=sender_name,
+        )
+        if success:
+            sent_count += 1
+        else:
+            failed_count += 1
+            failed_emails.append(to_email)
+
+    return {
+        "sent_count": sent_count,
+        "failed_count": failed_count,
+        "failed_emails": failed_emails,
+    }
