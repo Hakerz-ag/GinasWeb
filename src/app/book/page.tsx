@@ -571,22 +571,39 @@ export default function BookCourtPage() {
                 {/* 2026-2027 Contract Time Schedule */}
                 <div className="mt-6">
                   <h3 className="text-sm font-semibold text-gray-700 mb-3">2026–2027 Contract Time Schedule</h3>
-                  <p className="text-xs text-gray-500 mb-3">Available contract times, rates, and court assignments for the upcoming season.</p>
-                  <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                  <p className="text-xs text-gray-500 mb-3">Select a contract time to pre-fill your booking. Available times are shown below — once a time is approved by Gina, it will no longer appear.</p>
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
                     {contractSchedule.map(day => (
-                      <div key={day.day} className="bg-white border border-gray-200 rounded-xl p-4">
-                        <div className="flex items-center justify-between mb-2">
+                      <div key={day.day} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                        <div className="bg-green-50 px-4 py-2 flex items-center justify-between border-b border-green-100">
                           <h4 className="font-bold text-green-900">{day.day}</h4>
                           <span className="text-xs text-gray-500">{day.dates}</span>
                         </div>
-                        {day.off && <p className="text-xs text-red-600 mb-2">Off: {day.off}</p>}
-                        <div className="space-y-1.5">
+                        {day.off && <p className="px-4 pt-2 text-xs text-red-600">Off: {day.off}</p>}
+                        <div className="divide-y divide-gray-100">
                           {day.slots.map((slot, idx) => (
-                            <div key={idx} className="flex items-center justify-between text-sm py-1 border-b border-gray-50 last:border-0">
-                              <span className="text-gray-700 font-medium">{slot.time}</span>
-                              <span className="text-green-700 font-semibold">{slot.rate}</span>
-                              <span className="text-gray-500 text-xs">{slot.court}</span>
-                            </div>
+                            <button
+                              key={idx}
+                              onClick={() => {
+                                // Pre-fill the booking form with this time slot info
+                                // Parse the time range to get start time
+                                const startTime = slot.time.split('–')[0].trim().split(' ').slice(0, 2).join(' ');
+                                setSelectedTime(startTime);
+                                setNotes(prev => prev ? prev : `${day.day} contract time: ${slot.time} on ${slot.court}`);
+                              }}
+                              className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-green-50 transition-colors group"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-800 font-semibold text-sm">{slot.time}</span>
+                                  <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">{slot.court}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-green-700 font-bold text-sm">{slot.rate}</span>
+                                <span className="text-xs text-gray-400 group-hover:text-green-600 transition-colors">Select →</span>
+                              </div>
+                            </button>
                           ))}
                         </div>
                       </div>

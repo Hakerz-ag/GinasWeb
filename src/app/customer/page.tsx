@@ -5,26 +5,20 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import LayoutShell from '@/components/LayoutShell';
 import { api, ClassOut, BookingOut } from '@/lib/api';
-import { videos } from '@/data/videos';
 import {
-  Play,
   Calendar,
   MapPin,
   Users,
   Settings,
   User,
-  CreditCard,
   ChevronRight,
   ChevronLeft,
   ChevronRight as ChevronRightIcon,
   Clock,
-  Video,
-  BookOpen,
   AlertCircle,
   Award,
   Plus,
   X,
-  Trash2,
   CheckCircle,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -32,7 +26,7 @@ import Link from 'next/link';
 export default function CustomerDashboard() {
   const { user, isAuthenticated, justLoggedOut, loading } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'learn' | 'book' | 'schedule'>('learn');
+  const [activeTab, setActiveTab] = useState<'classes' | 'bookings'>('classes');
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [classes, setClasses] = useState<ClassOut[]>([]);
@@ -130,9 +124,8 @@ export default function CustomerDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: 'Upcoming Classes', value: '2', icon: BookOpen, color: 'text-green-600' },
+              { label: 'Upcoming Classes', value: '2', icon: Calendar, color: 'text-green-600' },
               { label: 'Court Bookings', value: '1', icon: MapPin, color: 'text-yellow-600' },
-              { label: 'Videos Watched', value: '8', icon: Video, color: 'text-blue-600' },
               { label: 'Family Members', value: user.sub_accounts?.length?.toString() || '0', icon: Users, color: 'text-purple-600' },
             ].map((stat) => (
               <div key={stat.label} className="bg-white rounded-xl p-4 flex items-center gap-3">
@@ -178,9 +171,8 @@ export default function CustomerDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex gap-1">
             {[
-              { key: 'learn' as const, label: 'Learn from the Experts', icon: Play },
-              { key: 'book' as const, label: 'Book a Court', icon: MapPin },
-              { key: 'schedule' as const, label: 'Schedule a Class', icon: Calendar },
+              { key: 'classes' as const, label: 'My Classes', icon: Calendar },
+              { key: 'bookings' as const, label: 'My Bookings', icon: MapPin },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -202,70 +194,118 @@ export default function CustomerDashboard() {
       {/* Tab Content */}
       <section className="bg-green-50 py-8 md:py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Learn from the Experts */}
-          {activeTab === 'learn' && (
+          {/* My Classes */}
+          {activeTab === 'classes' && (
             <div>
               <h2 className="text-xl font-bold text-green-900 mb-6">
-                🎬 Learn from the Experts
+                📅 My Classes
               </h2>
-              <p className="text-gray-600 mb-6">
-                Watch instructional videos from Gina and her team to improve your game.
-              </p>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {videos.slice(0, 6).map((video) => (
-                  <Link key={video.id} href="/videos" className="card overflow-hidden group cursor-pointer">
-                    <div className="relative aspect-video">
-                        <img
-                          src={video.thumbnail}
-                          alt={video.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                        <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
-                          <Play className="w-5 h-5 text-green-900 ml-0.5" fill="currentColor" />
-                        </div>
-                      </div>
-                      {video.category === 'featured' && (
-                        <span className="absolute top-3 left-3 bg-yellow-500 text-green-900 text-xs font-bold px-2 py-0.5 rounded-full">
-                          ⭐ Featured
-                        </span>
-                      )}
-                      {video.category === 'intro' && (
-                        <span className="absolute top-3 left-3 bg-green-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                          🎬 Intro
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-bold text-green-900">{video.title}</h3>
-                      <p className="text-gray-500 text-sm mt-1 line-clamp-2">{video.description}</p>
-                    </div>
+              {!user.assessment_completed ? (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
+                  <AlertCircle className="w-10 h-10 text-yellow-500 mx-auto mb-3" />
+                  <h3 className="font-bold text-yellow-800 text-lg">Assessment Required</h3>
+                  <p className="text-yellow-700 mt-2">
+                    You must complete a 1-on-1 assessment with Gina before joining classes.
+                    This helps us place you in the right skill level.
+                  </p>
+                  <Link href="/book" className="inline-block mt-4 bg-yellow-500 hover:bg-yellow-600 text-green-900 font-bold px-6 py-2 rounded-lg transition-colors">
+                    Book Your Assessment
                   </Link>
-                ))}
-              </div>
-              <div className="mt-6 text-center">
-                <Link href="/videos" className="btn-secondary inline-flex items-center gap-2">
-                  View All Videos <ChevronRight className="w-4 h-4" />
-                </Link>
-              </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-gray-600 mb-6">
+                    Showing classes for your skill level: <span className={`font-bold px-2 py-0.5 rounded-full text-xs ${
+                      user.skill_level === 'beginner' ? 'bg-green-100 text-green-700'
+                      : user.skill_level === 'adv-beg' ? 'bg-emerald-100 text-emerald-700'
+                      : user.skill_level === 'intermediate' ? 'bg-blue-100 text-blue-700'
+                      : user.skill_level === 'advanced' ? 'bg-purple-100 text-purple-700'
+                      : 'bg-gray-100 text-gray-700'
+                    }`}>{user.skill_level ? user.skill_level.charAt(0).toUpperCase() + user.skill_level.slice(1) : 'Not set'}</span>
+                  </p>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {classes
+                      .filter((cls) => {
+                        // Show "all" level classes to everyone, otherwise match skill level
+                        if (cls.level === 'all') return true;
+                        const levels = cls.level.split(',').map(l => l.trim());
+                        if (user.skill_level === 'none' || !user.skill_level) return levels.includes('beginner') || levels.includes('all');
+                        return levels.includes(user.skill_level) || levels.includes('all');
+                      })
+                      .map((cls) => (
+                      <div key={cls.id} className="card p-5">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                            cls.level === 'beginner' ? 'bg-green-100 text-green-700'
+                            : cls.level === 'adv-beg' ? 'bg-emerald-100 text-emerald-700'
+                            : cls.level === 'intermediate' ? 'bg-blue-100 text-blue-700'
+                            : cls.level === 'advanced' ? 'bg-purple-100 text-purple-700'
+                            : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {cls.level.charAt(0).toUpperCase() + cls.level.slice(1)}
+                          </span>
+                          <span className="text-sm font-bold text-green-900">${cls.price}</span>
+                        </div>
+                        <h3 className="font-bold text-green-900 mb-1">{cls.title}</h3>
+                        <p className="text-gray-500 text-sm mb-3">{cls.description}</p>
+                        <div className="space-y-1 text-sm text-gray-600">
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-3.5 h-3.5" />
+                            {cls.day_of_week}, {cls.start_time} – {cls.end_time}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Users className="w-3.5 h-3.5" />
+                            {cls.current_students} students
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleEnroll(cls.id)}
+                          disabled={enrollingClassId === cls.id || enrolledClassIds.has(cls.id) || pendingClassIds.has(cls.id)}
+                          className={`w-full mt-4 text-sm py-2 rounded-xl font-semibold transition-colors ${
+                            enrolledClassIds.has(cls.id)
+                              ? 'bg-green-100 text-green-700 cursor-default'
+                              : pendingClassIds.has(cls.id)
+                              ? 'bg-yellow-100 text-yellow-700 cursor-default'
+                              : enrollingClassId === cls.id
+                              ? 'bg-yellow-100 text-yellow-700 cursor-not-allowed'
+                              : 'bg-green-600 text-white hover:bg-green-700'
+                          }`}
+                        >
+                          {enrolledClassIds.has(cls.id) ? '✓ Enrolled' : pendingClassIds.has(cls.id) ? '⏳ Pending Approval' : enrollingClassId === cls.id ? 'Enrolling...' : 'Join Class'}
+                        </button>
+                        {enrollError && (
+                          <p className="text-red-500 text-xs mt-2 text-center">{enrollError}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 text-center">
+                    <Link href="/classes" className="btn-secondary inline-flex items-center gap-2">
+                      View All Classes <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
-          {/* Book a Court */}
-          {activeTab === 'book' && (
+          {/* My Bookings */}
+          {activeTab === 'bookings' && (
             <div>
               <h2 className="text-xl font-bold text-green-900 mb-6">
-                🏟️ Book a Court
+                🏟️ My Bookings
               </h2>
-              <p className="text-gray-600 mb-6">
-                Reserve an indoor court for practice, parties, or events.
-              </p>
-
-              {/* My Bookings */}
-              {myBookings.length > 0 && (
-                <div className="mb-8">
-                  <h3 className="font-semibold text-green-900 mb-4">My Bookings</h3>
-                  <div className="space-y-3">
+              {myBookings.length === 0 ? (
+                <div className="text-center py-12">
+                  <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 mb-4">No court bookings yet.</p>
+                  <Link href="/book" className="btn-yellow inline-flex items-center gap-2">
+                    <MapPin className="w-5 h-5" /> Book a Court
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3 mb-6">
                     {myBookings.map((booking) => (
                       <div key={booking.id} className="bg-white rounded-xl p-4 flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -314,97 +354,9 @@ export default function CustomerDashboard() {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-
-              <Link href="/book" className="btn-yellow inline-flex items-center gap-2">
-                <MapPin className="w-5 h-5" />
-                Book a New Court
-              </Link>
-            </div>
-          )}
-
-          {/* Schedule a Class */}
-          {activeTab === 'schedule' && (
-            <div>
-              <h2 className="text-xl font-bold text-green-900 mb-6">
-                📅 Schedule a Class
-              </h2>
-              {!user.assessment_completed ? (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
-                  <AlertCircle className="w-10 h-10 text-yellow-500 mx-auto mb-3" />
-                  <h3 className="font-bold text-yellow-800 text-lg">Assessment Required</h3>
-                  <p className="text-yellow-700 mt-2">
-                    You must complete a 1-on-1 assessment with Gina before joining classes.
-                    This helps us place you in the right skill level.
-                  </p>
-                  <Link href="/book" className="inline-block mt-4 bg-yellow-500 hover:bg-yellow-600 text-green-900 font-bold px-6 py-2 rounded-lg transition-colors">
-                    Book Your Assessment
+                  <Link href="/book" className="btn-yellow inline-flex items-center gap-2">
+                    <MapPin className="w-5 h-5" /> Book a New Court
                   </Link>
-                </div>
-              ) : (
-                <>
-                  <p className="text-gray-600 mb-6">
-                    Showing classes for your skill level: <span className={`font-bold px-2 py-0.5 rounded-full text-xs ${
-                      user.skill_level === 'beginner' ? 'bg-green-100 text-green-700'
-                      : user.skill_level === 'intermediate' ? 'bg-blue-100 text-blue-700'
-                      : user.skill_level === 'advanced' ? 'bg-purple-100 text-purple-700'
-                      : 'bg-gray-100 text-gray-700'
-                    }`}>{user.skill_level.charAt(0).toUpperCase() + user.skill_level.slice(1)}</span>
-                  </p>
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {classes
-                      .filter((cls) => {
-                        // Show "all" level classes to everyone, otherwise match skill level
-                        if (cls.level === 'all') return true;
-                        if (user.skill_level === 'none' || user.skill_level === 'beginner') return cls.level === 'beginner' || cls.level === 'all';
-                        return cls.level === user.skill_level || cls.level === 'all';
-                      })
-                      .map((cls) => (
-                      <div key={cls.id} className="card p-5">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                            cls.level === 'beginner' ? 'bg-green-100 text-green-700'
-                            : cls.level === 'intermediate' ? 'bg-blue-100 text-blue-700'
-                            : 'bg-purple-100 text-purple-700'
-                          }`}>
-                            {cls.level.charAt(0).toUpperCase() + cls.level.slice(1)}
-                          </span>
-                          <span className="text-sm font-bold text-green-900">${cls.price}</span>
-                        </div>
-                        <h3 className="font-bold text-green-900 mb-1">{cls.title}</h3>
-                        <p className="text-gray-500 text-sm mb-3">{cls.description}</p>
-                        <div className="space-y-1 text-sm text-gray-600">
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-3.5 h-3.5" />
-                            {cls.day_of_week}, {cls.start_time} – {cls.end_time}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Users className="w-3.5 h-3.5" />
-                            {cls.current_students} students
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleEnroll(cls.id)}
-                          disabled={enrollingClassId === cls.id || enrolledClassIds.has(cls.id) || pendingClassIds.has(cls.id)}
-                          className={`w-full mt-4 text-sm py-2 rounded-xl font-semibold transition-colors ${
-                            enrolledClassIds.has(cls.id)
-                              ? 'bg-green-100 text-green-700 cursor-default'
-                              : pendingClassIds.has(cls.id)
-                              ? 'bg-yellow-100 text-yellow-700 cursor-default'
-                              : enrollingClassId === cls.id
-                              ? 'bg-yellow-100 text-yellow-700 cursor-not-allowed'
-                              : 'bg-green-600 text-white hover:bg-green-700'
-                          }`}
-                        >
-                          {enrolledClassIds.has(cls.id) ? '✓ Enrolled' : pendingClassIds.has(cls.id) ? '⏳ Pending Approval' : enrollingClassId === cls.id ? 'Enrolling...' : 'Join Class'}
-                        </button>
-                        {enrollError && (
-                          <p className="text-red-500 text-xs mt-2 text-center">{enrollError}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
                 </>
               )}
             </div>

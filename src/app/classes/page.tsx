@@ -470,9 +470,6 @@ export default function ClassesPage() {
                             : 'No assessment yet'}
                         </p>
                       </div>
-                      {kid.skill_level && kid.skill_level !== 'none' && selectedClass.level !== 'all' && kid.skill_level !== selectedClass.level && (
-                        <span className="text-xs text-red-500 font-medium">Level mismatch</span>
-                      )}
                     </label>
                   ))}
                 </div>
@@ -528,7 +525,7 @@ export default function ClassesPage() {
                 <p className="text-xs text-gray-500 mb-3">Choose your preferred day and time. If your first choice is full, we'll try your next choices.</p>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-semibold text-green-800 mb-1 block">First Choice</label>
+                    <label className="text-xs font-semibold text-green-800 mb-1 block">Preference #1</label>
                     <div className="grid grid-cols-2 gap-2">
                       <select value={firstChoiceDay} onChange={e => setFirstChoiceDay(e.target.value)} className="p-2 border border-gray-300 rounded-lg text-sm">
                         <option value="">Select day</option>
@@ -541,7 +538,7 @@ export default function ClassesPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Second Choice</label>
+                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Preference #2</label>
                     <div className="grid grid-cols-2 gap-2">
                       <select value={secondChoiceDay} onChange={e => setSecondChoiceDay(e.target.value)} className="p-2 border border-gray-300 rounded-lg text-sm">
                         <option value="">Select day</option>
@@ -554,7 +551,7 @@ export default function ClassesPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 mb-1 block">Third Choice</label>
+                    <label className="text-xs font-semibold text-gray-500 mb-1 block">Preference #3</label>
                     <div className="grid grid-cols-2 gap-2">
                       <select value={thirdChoiceDay} onChange={e => setThirdChoiceDay(e.target.value)} className="p-2 border border-gray-300 rounded-lg text-sm">
                         <option value="">Select day</option>
