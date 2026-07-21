@@ -427,13 +427,13 @@ export default function AdminDashboard() {
                   )}
                 </div>
                 <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${sa.assessment_completed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                  {sa.assessment_completed ? '✓ Assessed' : '⚠ Pending'}
+                  {sa.assessment_completed ? '✓ Had Lesson' : '⚠ Pending'}
                 </span>
                 <span className="text-xs text-gray-500">{sa.sessions_taken} sessions</span>
               </div>
               {saAssessments.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-gray-100">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Assessment History</h4>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Private Lesson History</h4>
                   {saAssessments.map(a => (
                     <div key={a.id} className="bg-yellow-50 rounded-lg p-3 mb-2 text-sm">
                       <span className="font-medium text-yellow-900">{a.date} at {a.start_time}</span>
@@ -497,7 +497,7 @@ export default function AdminDashboard() {
                     )}
                   </div>
                   <div className="mt-2 flex items-center gap-2">
-                    <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${selectedUser.assessment_completed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{selectedUser.assessment_completed ? '✓ Assessed' : '⚠ Not Assessed'}</span>
+                    <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${selectedUser.assessment_completed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{selectedUser.assessment_completed ? '✓ Had Lesson' : '⚠ Not Yet'}</span>
                     <span className="text-xs text-gray-500">{selectedUser.sessions_taken} sessions</span>
                   </div>
                 </div>
@@ -548,7 +548,7 @@ export default function AdminDashboard() {
                 </div>
                 {/* Assessment History */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                  <h3 className="font-bold text-green-900 mb-4 flex items-center gap-2"><Award className="w-5 h-5 text-yellow-500" /> Assessment History</h3>
+                  <h3 className="font-bold text-green-900 mb-4 flex items-center gap-2"><Award className="w-5 h-5 text-yellow-500" /> Private Lesson History</h3>
                   {userAssessments.length > 0 ? (
                     <div className="space-y-3">
                       {userAssessments.map(a => (
@@ -576,7 +576,7 @@ export default function AdminDashboard() {
                         </div>
                       ))}
                     </div>
-                  ) : <p className="text-gray-500 text-sm">No assessments scheduled. Parents book assessments from their account.</p>}
+                  ) : <p className="text-gray-500 text-sm">No private lessons scheduled. Parents book lessons from their account.</p>}
                 </div>
               </div>
             </div>
@@ -610,7 +610,7 @@ export default function AdminDashboard() {
             {[
               { label: 'Total Users', value: users.length.toString(), icon: Users, color: 'text-green-600', bg: 'bg-green-100' },
               { label: 'Active Classes', value: classes.length.toString(), icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-100' },
-              { label: 'Pending Assessments', value: assessments.filter(a => a.status === 'scheduled').length.toString(), icon: Award, color: 'text-yellow-600', bg: 'bg-yellow-100' },
+              { label: 'Private Lessons', value: assessments.filter(a => a.status === 'scheduled').length.toString(), icon: Award, color: 'text-yellow-600', bg: 'bg-yellow-100' },
               { label: 'New Messages', value: chatMessages.filter(m => !m.read).length.toString(), icon: MessageCircle, color: 'text-red-600', bg: 'bg-red-100' },
             ].map(stat => (
               <div key={stat.label} className="bg-white rounded-xl p-4 flex items-center gap-3 shadow-sm">
@@ -628,7 +628,7 @@ export default function AdminDashboard() {
           <div className="flex gap-1 overflow-x-auto">
             {[
               { key: 'overview' as const, label: 'Overview', icon: BarChart3 },
-              { key: 'users' as const, label: 'Users', icon: UserPlus },
+              { key: 'users' as const, label: 'Private Lessons', icon: Award },
               { key: 'schedule' as const, label: 'Schedule', icon: Calendar },
               { key: 'bookings' as const, label: 'Bookings', icon: MapPin },
               { key: 'email' as const, label: 'Email', icon: Mail },
@@ -690,13 +690,14 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ── Users ────────────────────────────────────────────────────── */}
+          {/* ── Private Lessons ────────────────────────────────────────────── */}
           {activeSection === 'users' && (
             <div>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-green-900 flex items-center gap-2"><UserPlus className="w-5 h-5 text-yellow-500" /> User Management</h2>
+                <h2 className="text-xl font-bold text-green-900 flex items-center gap-2"><Award className="w-5 h-5 text-yellow-500" /> Private Lesson Requests</h2>
                 <button onClick={() => setShowAddUser(true)} className="btn-primary text-sm py-2"><UserPlus className="w-4 h-4 inline mr-1" /> Add User</button>
               </div>
+              <p className="text-gray-600 text-sm mb-4">People who have requested private lessons. Review and confirm their sessions. You can also manage all users below.</p>
               {showAddUser && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                   <div className="bg-white rounded-2xl p-6 max-w-md w-full">
@@ -716,14 +717,52 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               )}
+              {/* Private Lesson Requests */}
+              <div className="mb-8">
+                <h3 className="font-bold text-green-900 mb-4 flex items-center gap-2"><Award className="w-5 h-5 text-yellow-500" /> Private Lesson Requests</h3>
+                {assessments.filter(a => a.status === 'scheduled').length === 0 ? (
+                  <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-100 text-center">
+                    <Award className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                    <p className="text-gray-500 text-sm">No pending private lesson requests.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {assessments.filter(a => a.status === 'scheduled').map(a => {
+                      const assessmentUser = users.find(u => u.id === a.user_id);
+                      return (
+                        <div key={a.id} className="bg-yellow-50 rounded-xl p-4 flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-yellow-900">{assessmentUser?.name || 'Unknown User'}</p>
+                            <p className="text-sm text-yellow-700">{a.date} at {a.start_time}</p>
+                            {a.notes && <p className="text-xs text-yellow-600 mt-1">{a.notes}</p>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={async () => {
+                              try {
+                                await api.completeAssessment(a.id, { status: 'completed', skill_level_assigned: assessmentUser?.skill_level || 'beginner' });
+                                const res = await api.getAssessments();
+                                setAssessments(res.data);
+                              } catch (err) { console.error(err); }
+                            }} className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-lg hover:bg-green-200">Confirm</button>
+                            <button onClick={async () => {
+                              try { await api.deleteAssessment(a.id); setAssessments(assessments.filter(x => x.id !== a.id)); } catch (err) { console.error(err); }
+                            }} className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-lg hover:bg-red-200">Delete</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <h3 className="font-bold text-green-900 px-4 py-3 bg-green-50">All Users</h3>
                 <table className="w-full">
                   <thead className="bg-green-50">
                     <tr>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-green-800 uppercase">Name</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-green-800 uppercase">Role</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-green-800 uppercase">Skill Level</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-green-800 uppercase">Assessment</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-green-800 uppercase">Lesson</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-green-800 uppercase">Email</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-green-800 uppercase">Actions</th>
                     </tr>
@@ -755,7 +794,7 @@ export default function AdminDashboard() {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-bold ${u.assessment_completed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{u.assessment_completed ? '✓ Done' : '⚠ Pending'}</span></td>
+                        <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-bold ${u.assessment_completed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{u.assessment_completed ? '✓ Had Lesson' : '⚠ Pending'}</span></td>
                         <td className="px-4 py-3 text-sm text-gray-600">{u.email}</td>
                         <td className="px-4 py-3">
                           <button onClick={() => setSelectedUser(u)} className="text-green-600 hover:text-green-800 text-sm font-medium">View</button>
@@ -1130,7 +1169,7 @@ export default function AdminDashboard() {
                             </div>
                           </div>
                           <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${u.assessment_completed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                            {u.assessment_completed ? '✓ Assessed' : '⚠ Pending'}
+                            {u.assessment_completed ? '✓ Had Lesson' : '⚠ Pending'}
                           </span>
                         </div>
                         <div className="flex flex-wrap gap-2">

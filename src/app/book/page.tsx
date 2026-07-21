@@ -7,7 +7,7 @@ import { Calendar, Clock, Users, MapPin, Info, CheckCircle, Award, X } from 'luc
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 
-const timeSlots = [
+const allTimeSlots = [
   '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM',
   '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
   '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM',
@@ -16,16 +16,26 @@ const timeSlots = [
   '8:00 PM', '8:30 PM', '9:00 PM', '9:30 PM', '10:00 PM', '10:30 PM',
 ];
 
+// Private lesson times end at 6:30 PM
+const privateLessonTimes = allTimeSlots.filter(t => {
+  const hour = parseInt(t.split(':')[0]);
+  const isPM = t.includes('PM');
+  let h24 = hour;
+  if (isPM && hour !== 12) h24 += 12;
+  if (!isPM && hour === 12) h24 = 0;
+  return h24 < 18 || (h24 === 18 && t.includes(':30'));
+});
+
+// Court rental times (all available)
+const timeSlots = allTimeSlots;
+
 const courts = [
   { id: 1, name: 'Court 1', status: 'available' },
   { id: 2, name: 'Court 2', status: 'available' },
   { id: 3, name: 'Court 3', status: 'coming-soon' },
 ];
 
-const contractOptions = [
-  { weeks: 30, label: '30-Week Contract', desc: 'Full season commitment — best value', pricePerHour: 28 },
-  { weeks: 0, label: 'Open Time (Single)', desc: 'One-time rental when available', pricePerHour: 45 },
-];
+const openTimeRate = 45; // per hour for open time rental
 
 export default function BookCourtPage() {
   const { user, isAuthenticated } = useAuth();
@@ -41,7 +51,7 @@ export default function BookCourtPage() {
   const [paymentPlan, setPaymentPlan] = useState<'full'|'two'|'monthly'>('full');
   const [submitted, setSubmitted] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
-  const [contractType, setContractType] = useState(0); // index into contractOptions
+  // Court rental is always open time now (no contract option)
   const [ballMachine, setBallMachine] = useState(false);
   const [assessmentNotes, setAssessmentNotes] = useState('');
 
@@ -81,7 +91,7 @@ export default function BookCourtPage() {
   // Calculate estimated price for the booking
   const getBookingPrice = () => {
     const duration = parseFloat(selectedDuration) || 1.5;
-    const rate = contractOptions[contractType].pricePerHour;
+    const rate = openTimeRate;
     let price = duration * rate;
     if (ballMachine) price += duration * 10;
     // Price swell: if booking ends at or after 7:00 PM, apply 20% surcharge
@@ -121,7 +131,7 @@ export default function BookCourtPage() {
     setSubmitError(null);
     try {
       const duration = parseFloat(selectedDuration) || 1.5;
-      const rate = contractOptions[contractType].pricePerHour;
+      const rate = openTimeRate;
       let price = duration * rate;
       if (ballMachine) price += duration * 10;
         // apply same price swell calculation used in price preview
@@ -164,7 +174,7 @@ export default function BookCourtPage() {
         date: selectedDate,
         start_time: selectedTime,
         end_time: endTime,
-        contract_type: contractOptions[contractType].weeks === 30 ? '30-week' : contractOptions[contractType].weeks === 15 ? '15-week' : 'open-single',
+        contract_type: 'open-single',
         ball_machine: ballMachine,
         party_size: parseInt(partySize) || 2,
         notes: notes,
@@ -260,8 +270,8 @@ export default function BookCourtPage() {
                 <span className="font-semibold text-green-900">{partySize} people</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Contract:</span>
-                <span className="font-semibold text-green-900">{contractOptions[contractType].label}</span>
+                <span className="text-gray-500">Type:</span>
+                <span className="font-semibold text-green-900">Open Time Rental</span>
               </div>
               {ballMachine && (
                 <div className="flex justify-between">
@@ -285,11 +295,10 @@ export default function BookCourtPage() {
       <section className="bg-gradient-to-br from-green-900 to-green-800 py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-3xl md:text-5xl font-extrabold text-white mb-4">
-            Book a <span className="text-yellow-400">Court</span>
+            Book a <span className="text-yellow-400">Court</span> or <span className="text-yellow-400">Lesson</span>
           </h1>
           <p className="text-green-200 text-lg max-w-2xl mx-auto">
-            Reserve an indoor court for practice, parties, or events. We offer 30-week contract
-            stretches and single open-time rentals.
+            Reserve an indoor court for practice, parties, or events. Open time rentals available by the hour.
           </p>
         </div>
       </section>
@@ -301,7 +310,7 @@ export default function BookCourtPage() {
           {!isAuthenticated && (
             <div className="mb-8 bg-yellow-50 border border-yellow-200 rounded-2xl p-6 text-center">
               <h3 className="font-bold text-yellow-800 text-lg mb-2">Sign In Required</h3>
-              <p className="text-yellow-700 text-sm mb-4">You need to be signed in to book a court or assessment.</p>
+              <p className="text-yellow-700 text-sm mb-4">You need to be signed in to book a court or private lesson.</p>
               <div className="flex justify-center gap-3">
                 <a href="/login" className="btn-primary">Sign In</a>
                 <a href="/register" className="btn-secondary">Create Account</a>
@@ -327,11 +336,11 @@ export default function BookCourtPage() {
                     </div>
                     <div>
                       <h4 className="font-bold text-green-900">Private Lesson</h4>
-                      <p className="text-sm text-gray-500">1-on-1 coaching with Gina</p>
+                      <p className="text-sm text-gray-500">1-on-1 with a Pro</p>
                     </div>
                   </div>
                   <p className="text-xs text-gray-500 mt-2">
-                    Get personalized coaching tailored to your skill level. Submit your preferred time and Gina will confirm your session.
+                    Get personalized coaching tailored to your skill level. Submit your preferred time and a pro will confirm your session.
                   </p>
                 </button>
                 <button
@@ -352,7 +361,7 @@ export default function BookCourtPage() {
                     </div>
                   </div>
                   <p className="text-xs text-gray-500 mt-2">
-                    Reserve an indoor court for practice, parties, or events. 30-week contracts and open times available.
+                    Reserve an indoor court for practice, parties, or events. Open time rentals available by the hour.
                   </p>
                 </button>
               </div>
@@ -369,8 +378,8 @@ export default function BookCourtPage() {
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6 flex items-start gap-3">
                 <Info className="w-5 h-5 text-yellow-600 mt-0.5 shrink-0" />
                 <div className="text-sm text-yellow-800">
-                  <p className="font-semibold">Private Lessons with Gina</p>
-                  <p className="mt-1">Get personalized 1-on-1 coaching with Gina. Whether you're a beginner or advanced player, private lessons are the fastest way to improve your game. Submit your preferred date and time and Gina will confirm your session.</p>
+                  <p className="font-semibold">Private Lesson with a Pro</p>
+                  <p className="mt-1">Get personalized 1-on-1 coaching with a preferred pro. Whether you're a beginner or advanced player, private lessons are the fastest way to improve your game. Submit your preferred date and time and we'll confirm your session.</p>
                 </div>
               </div>
               <div className="space-y-6">
@@ -385,9 +394,9 @@ export default function BookCourtPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Preferred Time</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Preferred Time (up to 6:30 PM)</label>
                   <div className="grid grid-cols-4 gap-2">
-                    {timeSlots.map((time) => (
+                    {privateLessonTimes.map((time) => (
                       <button
                         key={time}
                         onClick={() => setSelectedTime(time)}
@@ -419,7 +428,7 @@ export default function BookCourtPage() {
                   disabled={!selectedDate || !selectedTime}
                   className={`btn-yellow ${(!selectedDate || !selectedTime) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  Book Assessment
+                  Request Private Lesson
                 </button>
               </div>
             </div>
@@ -456,7 +465,7 @@ export default function BookCourtPage() {
               <div>
                 <h2 className="text-xl font-bold text-green-900 mb-6 flex items-center gap-2">
                   <MapPin className="w-5 h-5 text-yellow-500" />
-                  Select a Court
+                  Court Preference
                 </h2>
                 <div className="grid gap-4">
                   {courts.map((court) => (
@@ -496,48 +505,18 @@ export default function BookCourtPage() {
                 <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-start gap-3">
                   <Info className="w-5 h-5 text-yellow-600 mt-0.5 shrink-0" />
                   <div className="text-sm text-yellow-800">
-                    <p className="font-semibold">30-Week Contract Season</p>
+                    <p className="font-semibold">Open Time Rental</p>
                     <p className="mt-1">
-                      Courts are rented in 30-week stretches with a predefined date range. A deposit of $200 per court hour
-                      is required to reserve your weekly time. Open times become available when
-                      contracted players can&apos;t make their slot.
+                      Courts are rented by the hour as open time slots. Select your preferred court and time — 
+                      your booking will be confirmed by Gina after verification. Open times are available when not in use for clinics.
                     </p>
                   </div>
                 </div>
 
                 <label className="mt-4 inline-flex items-center gap-3 text-sm">
                   <input type="checkbox" checked={noCourtPreference} onChange={(e) => setNoCourtPreference(e.target.checked)} className="w-4 h-4" />
-                  <span className="text-gray-600">No specific court preference (assign any available court)</span>
+                  <span className="text-gray-600">No court preference — assign any available court based on time</span>
                 </label>
-
-                {/* Contract Type Selection */}
-                <div className="mt-6">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Select Contract Type</h3>
-                  <div className="grid gap-3">
-                    {contractOptions.map((opt, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setContractType(idx)}
-                        className={`p-4 rounded-xl border-2 text-left transition-all ${
-                          contractType === idx
-                            ? 'border-green-600 bg-green-50 shadow-md'
-                            : 'border-gray-200 hover:border-green-300 hover:bg-green-50/50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-bold text-green-900">{opt.label}</h4>
-                            <p className="text-gray-500 text-sm mt-0.5">{opt.desc}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold text-green-900">${opt.pricePerHour}/hr</p>
-                            {idx === 0 && <span className="text-xs text-green-600 font-semibold">Best Value</span>}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
 
                 {/* Ball Machine Option */}
                 <div className="mt-4">
@@ -702,10 +681,10 @@ export default function BookCourtPage() {
                       <span className="font-semibold text-green-900">{selectedDate}</span>
                       <span className="text-gray-500">Time:</span>
                       <span className="font-semibold text-green-900">{selectedTime} ({selectedDuration} hrs)</span>
-                      <span className="text-gray-500">Contract:</span>
-                      <span className="font-semibold text-green-900">{contractOptions[contractType].label}</span>
+                      <span className="text-gray-500">Type:</span>
+                      <span className="font-semibold text-green-900">Open Time Rental</span>
                       <span className="text-gray-500">Rate:</span>
-                      <span className="font-semibold text-green-900">${contractOptions[contractType].pricePerHour}/hr{ballMachine ? ' + $10/hr ball machine' : ''}</span>
+                      <span className="font-semibold text-green-900">${openTimeRate}/hr{ballMachine ? ' + $10/hr ball machine' : ''}</span>
                     </div>
                   </div>
                 </div>
@@ -751,11 +730,11 @@ export default function BookCourtPage() {
               <div className="bg-green-50 rounded-xl p-3 mb-4">
                 <p className="font-semibold text-green-900">Court {selectedCourt} — {selectedDate}</p>
                 <p className="text-sm text-green-700">
-                  {selectedTime} ({selectedDuration} hrs) · {contractOptions[contractType].label}
+                  {selectedTime} ({selectedDuration} hrs) · Open Time Rental
                   {ballMachine ? ' + Ball Machine' : ''}
                 </p>
                 <p className="text-sm text-green-700 mt-1">
-                  Party size: {partySize} · Est. rate: ${contractOptions[contractType].pricePerHour}/hr
+                  Party size: {partySize} · Est. rate: ${openTimeRate}/hr
                 </p>
               </div>
               <PaymentMethodSelector
