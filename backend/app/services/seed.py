@@ -76,9 +76,9 @@ def seed_db(db: Session):
 
     # ── Open Times ───────────────────────────────────────────────────────
     open_times_data = [
-        OpenTime(id="ot-1", day="Monday", time="7:00 PM", court="1", status="available"),
-        OpenTime(id="ot-2", day="Wednesday", time="5:00 PM", court="2", status="available"),
-        OpenTime(id="ot-3", day="Friday", time="8:00 PM", court="1", status="booked"),
+        OpenTime(id="ot-1", day="Monday", start_time="7:00 PM", end_time="8:30 PM", court="1", status="available"),
+        OpenTime(id="ot-2", day="Wednesday", start_time="5:00 PM", end_time="6:30 PM", court="2", status="available"),
+        OpenTime(id="ot-3", day="Friday", start_time="8:00 PM", end_time="9:30 PM", court="1", status="booked"),
     ]
     db.add_all(open_times_data)
 
