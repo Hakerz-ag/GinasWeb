@@ -29,15 +29,13 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-const SKILL_LEVELS = ['none', 'novice', 'beginner', 'adv-beg', 'intermediate', 'advanced', 'pro'];
+const SKILL_LEVELS = ['none', 'beginner', 'adv-beg', 'intermediate', 'advanced'];
 const SKILL_COLORS: Record<string, string> = {
   none: 'bg-gray-100 text-gray-700',
-  novice: 'bg-slate-100 text-slate-700',
   beginner: 'bg-green-100 text-green-700',
   'adv-beg': 'bg-emerald-100 text-emerald-700',
   intermediate: 'bg-blue-100 text-blue-700',
   advanced: 'bg-purple-100 text-purple-700',
-  pro: 'bg-amber-100 text-amber-700',
 };
 
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];

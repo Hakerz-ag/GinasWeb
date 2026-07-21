@@ -208,7 +208,7 @@ export default function ClassesPage() {
           <Filter className="w-4 h-4 text-gray-400 shrink-0" />
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-gray-500 uppercase">Level:</span>
-            {['all', 'novice', 'beginner', 'adv-beg', 'intermediate', 'advanced', 'pro'].map((l) => (
+            {['all', 'beginner', 'adv-beg', 'intermediate', 'advanced'].map((l) => (
               <button
                 key={l}
                 onClick={() => setLevelFilter(l)}
@@ -301,12 +301,10 @@ export default function ClassesPage() {
                       <div className="flex flex-wrap gap-1">
                         {cls.level.split(',').map((l: string) => {
                           const level = l.trim();
-                          const color = level === 'novice' ? 'bg-slate-100 text-slate-700'
-                            : level === 'beginner' ? 'bg-green-100 text-green-700'
+                          const color = level === 'beginner' ? 'bg-green-100 text-green-700'
                             : level === 'adv-beg' ? 'bg-emerald-100 text-emerald-700'
                             : level === 'intermediate' ? 'bg-blue-100 text-blue-700'
                             : level === 'advanced' ? 'bg-purple-100 text-purple-700'
-                            : level === 'pro' ? 'bg-amber-100 text-amber-700'
                             : 'bg-gray-100 text-gray-700';
                           const label = level === 'adv-beg' ? 'Adv. Beg.' : level.charAt(0).toUpperCase() + level.slice(1);
                           return <span key={level} className={`text-xs font-bold px-2 py-0.5 rounded-full ${color}`}>{label}</span>;
