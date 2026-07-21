@@ -138,6 +138,8 @@ export default function BookCourtPage() {
   const [assessmentNotes, setAssessmentNotes] = useState('');
   // Contract schedule from API (fallback to hardcoded)
   const [contractSchedule, setContractSchedule] = useState<ContractScheduleDayOut[]>([]);
+  const [selectedContractSlot, setSelectedContractSlot] = useState<string | null>(null);
+  const [contractEmailSent, setContractEmailSent] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -634,9 +636,32 @@ export default function BookCourtPage() {
                             <button
                               key={idx}
                               onClick={async () => {
-                                const startTime = slot.time.split('–')[0].trim().split(' ').slice(0, 2).join(' ');
+                                // Parse the start time from the slot time range (e.g. "9:00 – 10:00 AM" → "9:00 AM")
+                                const timeRange = slot.time;
+                                let startTime = '';
+                                // Handle formats like "9:00 – 10:00 AM" or "11:30 AM – 1:00 PM"
+                                const parts = timeRange.split('–').map(s => s.trim());
+                                if (parts.length === 2) {
+                                  // The first part might be "9:00" or "9:00 AM" or "11:30 AM"
+                                  const firstPart = parts[0];
+                                  // The second part has the AM/PM indicator
+                                  const secondPart = parts[1];
+                                  const ampm = secondPart.includes('PM') ? 'PM' : secondPart.includes('AM') ? 'AM' : '';
+                                  if (firstPart.includes('AM') || firstPart.includes('PM')) {
+                                    startTime = firstPart;
+                                  } else if (ampm) {
+                                    startTime = `${firstPart} ${ampm}`;
+                                  } else {
+                                    startTime = firstPart;
+                                  }
+                                } else {
+                                  startTime = timeRange;
+                                }
                                 setSelectedTime(startTime);
                                 setNotes(prev => prev ? prev : `${day.day} ${day.category}: ${slot.level} — ${slot.time}`);
+                                // Visual feedback
+                                const slotKey = `${day.day}-${day.category}-${idx}`;
+                                setSelectedContractSlot(slotKey);
                                 // Send contract time selection email if authenticated
                                 if (isAuthenticated && user) {
                                   try {
@@ -648,16 +673,22 @@ export default function BookCourtPage() {
                                       level: slot.level,
                                       rate: slot.rate,
                                       dates: day.dates,
-                                      ages: 'ages' in slot ? slot.ages : '',
-                                      play: 'play' in slot ? slot.play : '',
+                                      ages: 'ages' in slot ? (slot as any).ages : '',
+                                      play: 'play' in slot ? (slot as any).play : '',
                                       classes: day.classes,
                                     });
+                                    setContractEmailSent(true);
+                                    setTimeout(() => setContractEmailSent(false), 3000);
                                   } catch (err) {
                                     console.error('Failed to send contract time selection email:', err);
                                   }
                                 }
                               }}
-                              className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-green-50 transition-colors group"
+                              className={`w-full px-4 py-3 flex items-center justify-between text-left transition-colors group ${
+                                selectedContractSlot === `${day.day}-${day.category}-${idx}`
+                                  ? 'bg-green-100 border-l-4 border-l-green-600'
+                                  : 'hover:bg-green-50'
+                              }`}
                             >
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
@@ -688,6 +719,20 @@ export default function BookCourtPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Contract time selection confirmation */}
+                {selectedContractSlot && (
+                  <div className="mt-4 bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-green-800">Time slot selected!</p>
+                      <p className="text-xs text-green-700 mt-1">Your selection has been noted. Complete the booking form below to reserve your spot.</p>
+                      {contractEmailSent && (
+                        <p className="text-xs text-green-600 mt-1">✉️ A confirmation email has been sent to your email address.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <label className="mt-4 inline-flex items-center gap-3 text-sm">
                   <input type="checkbox" checked={noCourtPreference} onChange={(e) => setNoCourtPreference(e.target.checked)} className="w-4 h-4" />

@@ -42,6 +42,7 @@ export default function Navbar() {
           { href: '/videos', label: 'Videos', icon: null },
           { href: '/book', label: 'Book a Court', icon: null },
           { href: '/classes', label: 'Schedule a Class', icon: null },
+          { href: '/spotlight', label: 'Spotlight', icon: null },
           { href: '/staff', label: 'Our Staff', icon: null },
         ]
     : [
@@ -50,6 +51,7 @@ export default function Navbar() {
         { href: '/videos', label: 'Videos', icon: null },
         { href: '/book', label: 'Book a Court', icon: null },
         { href: '/classes', label: 'Schedule a Class', icon: null },
+        { href: '/spotlight', label: 'Spotlight', icon: null },
         { href: '/staff', label: 'Our Staff', icon: null },
       ];
 
