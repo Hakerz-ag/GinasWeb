@@ -155,11 +155,6 @@ export default function ClassesPage() {
     if (levelFilter !== 'all' && cls.level !== levelFilter) return false;
     if (typeFilter !== 'all' && cls.type !== typeFilter) return false;
     if (seasonFilter !== 'all' && cls.season !== seasonFilter) return false;
-
-    // If user is logged in with a skill level, only show classes they can join
-    if (isAuthenticated && userSkillLevel !== 'none' && cls.level !== 'all') {
-      if (cls.level !== userSkillLevel) return false;
-    }
     return true;
   });
 
@@ -186,25 +181,13 @@ export default function ClassesPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
               <p className="text-sm text-blue-800">
-                <strong>Sign in</strong> to join classes and book assessments.
+                <strong>Sign in</strong> to join classes and book private lessons.
               </p>
               <div className="flex gap-2">
                 <Link href="/login" className="btn-primary text-sm py-1.5 px-4">Sign In</Link>
                 <Link href="/register" className="btn-secondary text-sm py-1.5 px-4">Create Account</Link>
               </div>
             </div>
-          </div>
-        </section>
-      )}
-
-      {/* Skill Level Info */}
-      {isAuthenticated && assessmentCompleted && userSkillLevel !== 'none' && (
-        <section className="bg-blue-50 border-b border-blue-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-            <p className="text-sm text-blue-800">
-              🎯 Your skill level: <strong className="capitalize">{userSkillLevel}</strong> —
-              Showing classes available for your level.
-            </p>
           </div>
         </section>
       )}

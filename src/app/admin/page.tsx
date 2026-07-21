@@ -54,7 +54,7 @@ for (let h = 6; h <= 22; h++) {
 export default function AdminDashboard() {
   const { user, isAuthenticated, loading, justLoggedOut } = useAuth();
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState<'overview' | 'users' | 'schedule' | 'bookings' | 'email' | 'opentimes' | 'scheduleblocks' | 'messages' | 'payments'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'users' | 'schedule' | 'bookings' | 'email' | 'opentimes' | 'scheduleblocks' | 'messages' | 'payments' | 'enrollments'>('overview');
   const [users, setUsers] = useState<UserOut[]>([]);
   const [classes, setClasses] = useState<ClassOut[]>([]);
   const [openTimes, setOpenTimes] = useState<OpenTimeOut[]>([]);
@@ -76,7 +76,9 @@ export default function AdminDashboard() {
   const [openTimeStart, setOpenTimeStart] = useState('9:00 AM');
   const [openTimeEnd, setOpenTimeEnd] = useState('10:00 AM');
   const [openTimeCourt, setOpenTimeCourt] = useState('1');
-  const [newClass, setNewClass] = useState({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', season: '', minAge: 0, maxAge: 100, price: 350 });
+  const [newClass, setNewClass] = useState({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', season: '', minAge: '' as string | number, maxAge: '' as string | number, price: 350 });
+  const [editingClass, setEditingClass] = useState<ClassOut | null>(null);
+  const [editClass, setEditClass] = useState({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', season: '', minAge: '' as string | number, maxAge: '' as string | number, price: 350 });
   const [skillDropdownOpen, setSkillDropdownOpen] = useState<string | null>(null);
   const [newBlock, setNewBlock] = useState({ day: 'Monday', startTime: '12:00 PM', endTime: '1:00 PM', reason: 'Clinic break', blockType: 'clinic_break', date: '' });
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -634,6 +636,7 @@ export default function AdminDashboard() {
               { key: 'scheduleblocks' as const, label: 'Blocks', icon: Ban },
               { key: 'messages' as const, label: 'Messages', icon: MessageCircle },
               { key: 'payments' as const, label: 'Payments', icon: CreditCard },
+              { key: 'enrollments' as const, label: 'Enrollments', icon: Users },
             ].map(tab => (
               <button key={tab.key} onClick={() => setActiveSection(tab.key)} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeSection === tab.key ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
                 <tab.icon className="w-4 h-4" />{tab.label}
@@ -796,6 +799,15 @@ export default function AdminDashboard() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
+                          <button onClick={() => {
+                            setEditingClass(cls);
+                            setEditClass({
+                              title: cls.title, type: cls.type, level: cls.level, day: cls.day_of_week,
+                              startTime: cls.start_time, endTime: cls.end_time,
+                              startDate: cls.start_date || '', endDate: cls.end_date || '', season: cls.season || '',
+                              minAge: cls.min_age ?? '', maxAge: cls.max_age ?? '', price: cls.price,
+                            });
+                          }} className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-lg hover:bg-blue-200">Edit</button>
                           {cls.season && (
                             <button onClick={async () => {
                               if (confirm(`Renew "${cls.title}" to the next season? This will create a new class with shifted dates and copy all active enrollments.`)) {
@@ -825,10 +837,10 @@ export default function AdminDashboard() {
                         title: newClass.title, type: newClass.type, level: newClass.level,
                         day_of_week: newClass.day, start_time: newClass.startTime, end_time: newClass.endTime,
                         start_date: newClass.startDate, end_date: newClass.endDate, season: newClass.season || undefined,
-                        min_age: newClass.minAge, max_age: newClass.maxAge, price: newClass.price, description: '',
+                        min_age: typeof newClass.minAge === 'string' ? parseInt(newClass.minAge) || 0 : newClass.minAge, max_age: typeof newClass.maxAge === 'string' ? parseInt(newClass.maxAge) || 100 : newClass.maxAge, price: newClass.price, description: '',
                       });
                       setClasses([...classes, res.data]);
-                      setNewClass({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', season: '', minAge: 0, maxAge: 100, price: 350 });
+                      setNewClass({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', season: '', minAge: '', maxAge: '', price: 350 });
                     } catch (err) { console.error(err); }
                   }}>
                     <div className="grid grid-cols-2 gap-4">
@@ -841,13 +853,59 @@ export default function AdminDashboard() {
                       <div><label className="text-sm text-gray-500">Start Date</label><input type="date" value={newClass.startDate} onChange={e => setNewClass({ ...newClass, startDate: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
                       <div><label className="text-sm text-gray-500">End Date</label><input type="date" value={newClass.endDate} onChange={e => setNewClass({ ...newClass, endDate: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
                       <div><label className="text-sm text-gray-500">Season</label><select value={newClass.season} onChange={e => setNewClass({ ...newClass, season: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="">No Season</option><option value="winter">❄️ Winter</option><option value="spring">🌸 Spring</option><option value="summer">☀️ Summer</option><option value="fall">🍂 Fall</option></select></div>
-                      {newClass.type === 'junior-clinic' && (<><div><label className="text-sm text-gray-500">Min Age</label><input type="number" min="0" value={newClass.minAge} onChange={e => setNewClass({ ...newClass, minAge: parseInt(e.target.value) || 0 })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
-                      <div><label className="text-sm text-gray-500">Max Age</label><input type="number" min="0" value={newClass.maxAge} onChange={e => setNewClass({ ...newClass, maxAge: parseInt(e.target.value) || 100 })} className="w-full p-2 border border-gray-300 rounded-lg" /></div></>)}
+                      {newClass.type === 'junior-clinic' && (<><div><label className="text-sm text-gray-500">Min Age</label><input type="number" placeholder="6" value={newClass.minAge} onChange={e => setNewClass({ ...newClass, minAge: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
+                      <div><label className="text-sm text-gray-500">Max Age</label><input type="number" placeholder="17" value={newClass.maxAge} onChange={e => setNewClass({ ...newClass, maxAge: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div></>)}
                       <div><label className="text-sm text-gray-500">Price ($)</label><input type="text" inputMode="decimal" value={newClass.price} onChange={e => setNewClass({ ...newClass, price: parseFloat(e.target.value) || 0 })} className="w-full p-2 border border-gray-300 rounded-lg" placeholder="350-700" /></div>
                     </div>
                     <button type="submit" className="mt-4 w-full text-white bg-green-600 hover:bg-green-700 rounded-lg text-sm font-medium py-2">Add Class</button>
                   </form>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Edit Class Modal ────────────────────────────────────────────── */}
+          {editingClass && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-green-900">Edit Class</h3>
+                  <button onClick={() => setEditingClass(null)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"><X className="w-5 h-5 text-gray-500" /></button>
+                </div>
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    const res = await api.updateClass(editingClass.id, {
+                      title: editClass.title, type: editClass.type, level: editClass.level,
+                      day_of_week: editClass.day, start_time: editClass.startTime, end_time: editClass.endTime,
+                      start_date: editClass.startDate, end_date: editClass.endDate, season: editClass.season || undefined,
+                      min_age: typeof editClass.minAge === 'string' ? parseInt(editClass.minAge) || 0 : editClass.minAge,
+                      max_age: typeof editClass.maxAge === 'string' ? parseInt(editClass.maxAge) || 100 : editClass.maxAge,
+                      price: editClass.price, description: '',
+                    });
+                    setClasses(classes.map(c => c.id === editingClass.id ? res.data : c));
+                    setEditingClass(null);
+                  } catch (err) { console.error(err); alert('Failed to update class'); }
+                }}>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><label className="text-sm text-gray-500">Title</label><input type="text" value={editClass.title} onChange={e => setEditClass({ ...editClass, title: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
+                    <div><label className="text-sm text-gray-500">Type</label><select value={editClass.type} onChange={e => setEditClass({ ...editClass, type: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="adult-clinic">Adult Clinic</option><option value="junior-clinic">Junior Clinic</option></select></div>
+                    <div><label className="text-sm text-gray-500">Level</label><select value={editClass.level} onChange={e => setEditClass({ ...editClass, level: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="beginner">Beginner</option><option value="adv-beg">Adv. Beg.</option><option value="intermediate">Intermediate</option><option value="int-adv">Int./Adv.</option><option value="advanced">Advanced</option></select></div>
+                    <div><label className="text-sm text-gray-500">Day</label><select value={editClass.day} onChange={e => setEditClass({ ...editClass, day: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
+                    <div><label className="text-sm text-gray-500">Start Time</label><input type="text" value={editClass.startTime} onChange={e => setEditClass({ ...editClass, startTime: e.target.value })} placeholder="e.g. 3:15 PM" className="w-full p-2 border border-gray-300 rounded-lg" /></div>
+                    <div><label className="text-sm text-gray-500">End Time</label><input type="text" value={editClass.endTime} onChange={e => setEditClass({ ...editClass, endTime: e.target.value })} placeholder="e.g. 4:45 PM" className="w-full p-2 border border-gray-300 rounded-lg" /></div>
+                    <div><label className="text-sm text-gray-500">Start Date</label><input type="date" value={editClass.startDate} onChange={e => setEditClass({ ...editClass, startDate: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
+                    <div><label className="text-sm text-gray-500">End Date</label><input type="date" value={editClass.endDate} onChange={e => setEditClass({ ...editClass, endDate: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
+                    <div><label className="text-sm text-gray-500">Season</label><select value={editClass.season} onChange={e => setEditClass({ ...editClass, season: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="">No Season</option><option value="winter">❄️ Winter</option><option value="spring">🌸 Spring</option><option value="summer">☀️ Summer</option><option value="fall">🍂 Fall</option></select></div>
+                    {editClass.type === 'junior-clinic' && (<><div><label className="text-sm text-gray-500">Min Age</label><input type="number" placeholder="6" value={editClass.minAge} onChange={e => setEditClass({ ...editClass, minAge: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
+                    <div><label className="text-sm text-gray-500">Max Age</label><input type="number" placeholder="17" value={editClass.maxAge} onChange={e => setEditClass({ ...editClass, maxAge: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div></>)}
+                    <div><label className="text-sm text-gray-500">Price ($)</label><input type="text" inputMode="decimal" value={editClass.price} onChange={e => setEditClass({ ...editClass, price: parseFloat(e.target.value) || 0 })} className="w-full p-2 border border-gray-300 rounded-lg" placeholder="350-700" /></div>
+                  </div>
+                  <div className="flex gap-3 mt-4">
+                    <button type="submit" className="flex-1 text-white bg-green-600 hover:bg-green-700 rounded-lg text-sm font-medium py-2">Save Changes</button>
+                    <button type="button" onClick={() => setEditingClass(null)} className="flex-1 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium py-2">Cancel</button>
+                  </div>
+                </form>
               </div>
             </div>
           )}
@@ -1111,18 +1169,38 @@ export default function AdminDashboard() {
                   <>
                     <div className="mb-4">
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Select Days</label>
+                      <p className="text-xs text-gray-500 mb-2">Choose days based on your class schedule or pick specific days.</p>
                       <div className="flex flex-wrap gap-2">
                         {daysOfWeek.map(day => (
                           <button key={day} onClick={() => toggleEmailDay(day)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${emailDays.includes(day) ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-green-50'}`}>{day}</button>
                         ))}
+                        {classes.length > 0 && (
+                          <button onClick={() => {
+                            const classDays = Array.from(new Set(classes.map(c => c.day_of_week)));
+                            setEmailDays(classDays);
+                          }} className="px-4 py-2 rounded-lg text-sm font-medium bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors">📋 Class Days Only</button>
+                        )}
                       </div>
                     </div>
                     <div className="mb-4">
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Select Times</label>
+                      <p className="text-xs text-gray-500 mb-2">Choose times based on your class schedule or pick specific times (9 AM – 9 PM).</p>
                       <div className="flex flex-wrap gap-2">
-                        {timeSlots.map(time => (
+                        {timeSlots.filter(t => {
+                          const timeStr = t;
+                          let hour = parseInt(timeStr.split(':')[0]);
+                          if (timeStr.includes('PM') && hour !== 12) hour += 12;
+                          if (timeStr.includes('AM') && hour === 12) hour = 0;
+                          return hour >= 9 && hour < 21;
+                        }).map(time => (
                           <button key={time} onClick={() => toggleEmailTime(time)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${emailTimes.includes(time) ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-green-50'}`}>{time}</button>
                         ))}
+                        {classes.length > 0 && (
+                          <button onClick={() => {
+                            const classTimes = Array.from(new Set(classes.map(c => c.start_time)));
+                            setEmailTimes(classTimes);
+                          }} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors">📋 Class Times Only</button>
+                        )}
                       </div>
                     </div>
                   </>
@@ -1513,6 +1591,70 @@ export default function AdminDashboard() {
                   {paymentConfigLoading ? 'Saving...' : 'Save Payment Details'}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* ── Enrollment Requests ────────────────────────────────────────── */}
+          {activeSection === 'enrollments' && (
+            <div>
+              <h2 className="text-xl font-bold text-green-900 mb-6 flex items-center gap-2"><Users className="w-5 h-5 text-yellow-500" /> Enrollment Requests</h2>
+              <p className="text-gray-600 text-sm mb-6">Review and approve or deny class enrollment requests. Gina decides the appropriate level placement.</p>
+              {users.filter(u => u.role === 'customer' && u.classes && u.classes.length > 0).length === 0 ? (
+                <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-100 text-center">
+                  <Users className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500 text-sm">No enrollment requests yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {users.filter(u => u.role === 'customer' && u.classes && u.classes.length > 0).map(u => (
+                    <div key={u.id} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white font-bold">{u.name.charAt(0)}</div>
+                          <div>
+                            <p className="font-semibold text-green-900">{u.name}</p>
+                            <p className="text-xs text-gray-500">{u.email}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${SKILL_COLORS[u.skill_level] || 'bg-gray-100 text-gray-700'}`}>
+                            {u.skill_level ? u.skill_level.charAt(0).toUpperCase() + u.skill_level.slice(1) : 'No Level'}
+                          </span>
+                          <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${u.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                            {u.status}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {u.classes.map((cls, idx) => {
+                          const classData = classes.find(c => c.title === cls);
+                          return (
+                            <span key={idx} className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg">
+                              {cls}
+                              {classData && <span className="text-blue-400 ml-1">({classData.day_of_week} {classData.start_time})</span>}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-3 flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Set level:</span>
+                        <div className="flex gap-1">
+                          {SKILL_LEVELS.filter(l => l !== 'none').map(level => (
+                            <button key={level} onClick={async () => {
+                              try {
+                                await api.setSkillLevel(u.id, level);
+                                setUsers(users.map(usr => usr.id === u.id ? { ...usr, skill_level: level, assessment_completed: true } : usr));
+                              } catch (err) { console.error(err); }
+                            }} className={`px-2 py-1 text-xs rounded-lg font-medium transition-colors ${u.skill_level === level ? SKILL_COLORS[level] + ' ring-2 ring-green-600' : 'bg-gray-100 text-gray-600 hover:bg-green-50'}`}>
+                              {level === 'adv-beg' ? 'Adv.Beg' : level === 'int-adv' ? 'Int/Adv' : level.charAt(0).toUpperCase() + level.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
