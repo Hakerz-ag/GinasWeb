@@ -4,7 +4,7 @@ import LayoutShell from '@/components/LayoutShell';
 import PaymentMethodSelector from '@/components/PaymentMethodSelector';
 import { api, ClassOut, SubAccountOut } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { Calendar, Clock, Users, DollarSign, ChevronRight, Filter, AlertTriangle, CheckCircle, X, Baby, Sparkles } from 'lucide-react';
+import { Calendar, Clock, Users, DollarSign, ChevronRight, Filter, CheckCircle, X, Baby, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
@@ -172,32 +172,13 @@ export default function ClassesPage() {
             Schedule a <span className="text-yellow-400">Class</span>
           </h1>
           <p className="text-green-200 text-lg max-w-2xl mx-auto">
-            Join a clinic or class that fits your skill level. New students must complete a
-            1-on-1 assessment with Gina before enrolling.
+            Join a clinic or class that fits your skill level. Want personalized coaching?{' '}
+            <Link href="/book" className="text-yellow-400 underline hover:text-yellow-300">
+              Request a private lesson
+            </Link>.
           </p>
         </div>
       </section>
-
-      {/* Assessment Required Banner */}
-      {isAuthenticated && !assessmentCompleted && (
-        <section className="bg-yellow-50 border-b border-yellow-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-yellow-800">Assessment Required</p>
-                <p className="text-sm text-yellow-700">
-                  You must complete a 1-on-1 assessment with Gina before you can enroll in classes.
-                  This helps us place you at the right skill level.{' '}
-                  <Link href="/book" className="text-yellow-900 font-bold underline">
-                    Book your assessment →
-                  </Link>
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* Login prompt for unauthenticated users */}
       {!isAuthenticated && (
@@ -362,9 +343,9 @@ export default function ClassesPage() {
                       )}
                       <div className="flex items-center gap-2 text-sm text-gray-700">
                         <DollarSign className="w-4 h-4 text-green-600" />
-                        <span>${cls.price} per session</span>
+                        <span>${cls.price}</span>
                       </div>
-                      {cls.min_age !== undefined && cls.max_age !== undefined && (
+                      {cls.type === 'junior-clinic' && cls.min_age !== undefined && cls.max_age !== undefined && (
                         <div className="flex items-center gap-2 text-sm text-gray-700">
                           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Ages {cls.min_age}–{cls.max_age}</span>
                         </div>
@@ -397,14 +378,6 @@ export default function ClassesPage() {
                         className="btn-primary w-full text-center block mt-4 opacity-75"
                       >
                         <Baby className="w-4 h-4 inline mr-1" /> Add Kids to Enroll
-                        <ChevronRight className="w-4 h-4 inline ml-1" />
-                      </Link>
-                    ) : !assessmentCompleted && cls.type !== 'junior-clinic' ? (
-                      <Link
-                        href="/book"
-                        className="btn-primary w-full text-center block mt-4 opacity-75"
-                      >
-                        Assessment Required
                         <ChevronRight className="w-4 h-4 inline ml-1" />
                       </Link>
                     ) : (
@@ -568,7 +541,7 @@ export default function ClassesPage() {
                     <label className="text-xs font-medium text-gray-600">1st Choice Time</label>
                     <select value={firstChoiceTime} onChange={e => setFirstChoiceTime(e.target.value)} className="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm">
                       <option value="">Select time</option>
-                      {['4:00 PM','4:30 PM','5:00 PM','5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM'].map(t => <option key={t} value={t}>{t}</option>)}
+                      {['6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM','9:30 PM','10:00 PM'].map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
                   <div>
@@ -582,7 +555,7 @@ export default function ClassesPage() {
                     <label className="text-xs font-medium text-gray-600">2nd Choice Time</label>
                     <select value={secondChoiceTime} onChange={e => setSecondChoiceTime(e.target.value)} className="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm">
                       <option value="">Select time</option>
-                      {['4:00 PM','4:30 PM','5:00 PM','5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM'].map(t => <option key={t} value={t}>{t}</option>)}
+                      {['6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM','9:30 PM','10:00 PM'].map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
                 </div>

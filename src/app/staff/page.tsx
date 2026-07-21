@@ -2,7 +2,7 @@
 
 import LayoutShell from '@/components/LayoutShell';
 import { staff } from '@/data/staff';
-import { Award, Star } from 'lucide-react';
+import { Star } from 'lucide-react';
 
 export default function StaffPage() {
   return (
@@ -44,17 +44,7 @@ export default function StaffPage() {
                   <p className="text-yellow-400 font-semibold mt-1">{member.role}</p>
                 </div>
                 <div className="p-6">
-                  <p className="text-gray-600 leading-relaxed mb-4">{member.bio}</p>
-                  {member.certifications && (
-                    <div className="space-y-2">
-                      {member.certifications.map((cert) => (
-                        <div key={cert} className="flex items-center gap-2 text-sm">
-                          <Award className="w-4 h-4 text-yellow-500" />
-                          <span className="text-gray-700">{cert}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <p className="text-gray-600 leading-relaxed">{member.bio}</p>
                 </div>
               </div>
             ))}

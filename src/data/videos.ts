@@ -26,7 +26,7 @@ export const videos: Video[] = [
   // === FEATURED ===
   {
     id: 'v2',
-    title: 'Day in the Life at Gina\'s Tennis World',
+    title: 'How Are Clinics Different at Gina\'s Tennis World?',
     description: 'Experience a day at Gina\'s Tennis World! See what makes this club special — from morning clinics to evening matches, get an inside look at the energy and community.',
     youtubeId: 'LQXUasMGRGM',
     thumbnail: 'https://img.youtube.com/vi/LQXUasMGRGM/maxresdefault.jpg',

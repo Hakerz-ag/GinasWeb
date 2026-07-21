@@ -670,18 +670,6 @@ export default function HomeClient() {
                 <h3 className="font-bold text-green-900 text-lg">{member.name}</h3>
                 <p className="text-yellow-600 font-semibold text-sm mb-3">{member.role}</p>
                 <p className="text-gray-600 text-sm leading-relaxed">{member.bio}</p>
-                {member.certifications && (
-                  <div className="mt-3 flex flex-wrap justify-center gap-1">
-                    {member.certifications.map((cert) => (
-                      <span
-                        key={cert}
-                        className="inline-block bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full"
-                      >
-                        {cert}
-                      </span>
-                    ))}
-                  </div>
-                )}
                 <Link href="/staff" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-green-600 hover:text-green-700">
                   Learn More <ChevronRight className="w-4 h-4" />
                 </Link>

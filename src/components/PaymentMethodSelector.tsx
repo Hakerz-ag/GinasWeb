@@ -205,14 +205,16 @@ export default function PaymentMethodSelector({
           )}
           {selectedMethod === 'venmo' && (
             <p className="text-sm text-yellow-700">
-              Send ${amount.toFixed(2)} via Venmo to <strong>{venmoHandle || '@Gina-Tennis'}</strong>. 
-              Include your name and &quot;{description || paymentType}&quot; in the note.
+              Send ${amount.toFixed(2)} via Venmo to <strong>{venmoHandle || '@gina-genovese-6'}</strong>. 
+              Include your name and &quot;{description || paymentType}&quot; in the note. 
+              Security code: <strong>2847</strong>.
             </p>
           )}
           {selectedMethod === 'zelle' && (
             <p className="text-sm text-yellow-700">
-              Send ${amount.toFixed(2)} via Zelle to <strong>{zelleInfo || 'ginas@tennis.com'}</strong>. 
-              Include your name and &quot;{description || paymentType}&quot; in the memo.
+              Send ${amount.toFixed(2)} via Zelle to <strong>{zelleInfo || 'ginastennisworld@gmail.com'}</strong>. 
+              Include your name and &quot;{description || paymentType}&quot; in the memo. 
+              <br/><strong>Note:</strong> Zelle will show as &quot;Gina Rose Enterprises LLC&quot;.
             </p>
           )}
           {selectedMethod === 'pay_at_location' && (

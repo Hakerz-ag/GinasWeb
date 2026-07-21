@@ -40,7 +40,16 @@ const SKILL_COLORS: Record<string, string> = {
 };
 
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const timeSlots = ['4:00 PM', '4:30 PM', '5:00 PM', '5:30 PM', '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM'];
+// Generate time options from 6:00 AM to 10:30 PM in 30-minute increments
+const timeSlots: string[] = [];
+for (let h = 6; h <= 22; h++) {
+  for (const m of ['00', '30']) {
+    if (h === 22 && m === '30') break; // stop at 10:30 PM
+    const hour12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    timeSlots.push(`${hour12}:${m} ${ampm}`);
+  }
+}
 
 export default function AdminDashboard() {
   const { user, isAuthenticated, loading, justLoggedOut } = useAuth();
@@ -67,15 +76,15 @@ export default function AdminDashboard() {
   const [openTimeStart, setOpenTimeStart] = useState('9:00 AM');
   const [openTimeEnd, setOpenTimeEnd] = useState('10:00 AM');
   const [openTimeCourt, setOpenTimeCourt] = useState('1');
-  const [newClass, setNewClass] = useState({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', season: '', minAge: 0, maxAge: 100, price: 35 });
+  const [newClass, setNewClass] = useState({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', season: '', minAge: 0, maxAge: 100, price: 350 });
   const [skillDropdownOpen, setSkillDropdownOpen] = useState<string | null>(null);
-  const [newBlock, setNewBlock] = useState({ day: 'Monday', startTime: '12:00 PM', endTime: '1:00 PM', reason: 'Lunch break', blockType: 'lunch', date: '' });
+  const [newBlock, setNewBlock] = useState({ day: 'Monday', startTime: '12:00 PM', endTime: '1:00 PM', reason: 'Clinic break', blockType: 'clinic_break', date: '' });
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
   const [paymentConfig, setPaymentConfig] = useState<PaymentMethodConfig>({
     stripe_enabled: true, cash_enabled: true, check_enabled: true,
     venmo_enabled: true, zelle_enabled: true, pay_at_location_enabled: true,
-    venmo_handle: '', zelle_info: '',
+    venmo_handle: '@gina-genovese-6', zelle_info: 'ginastennisworld@gmail.com',
   });
   const [paymentConfigLoading, setPaymentConfigLoading] = useState(false);
   const [paymentConfigSaved, setPaymentConfigSaved] = useState(false);
@@ -819,7 +828,7 @@ export default function AdminDashboard() {
                         min_age: newClass.minAge, max_age: newClass.maxAge, price: newClass.price, description: '',
                       });
                       setClasses([...classes, res.data]);
-                      setNewClass({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', season: '', minAge: 0, maxAge: 100, price: 35 });
+                      setNewClass({ title: '', type: 'adult-clinic', level: 'beginner', day: 'Monday', startTime: '6:00 PM', endTime: '7:30 PM', startDate: '', endDate: '', season: '', minAge: 0, maxAge: 100, price: 350 });
                     } catch (err) { console.error(err); }
                   }}>
                     <div className="grid grid-cols-2 gap-4">
@@ -827,14 +836,14 @@ export default function AdminDashboard() {
                       <div><label className="text-sm text-gray-500">Type</label><select value={newClass.type} onChange={e => setNewClass({ ...newClass, type: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="adult-clinic">Adult Clinic</option><option value="junior-clinic">Junior Clinic</option></select></div>
                       <div><label className="text-sm text-gray-500">Level</label><select value={newClass.level} onChange={e => setNewClass({ ...newClass, level: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="beginner">Beginner</option><option value="adv-beg">Adv. Beg.</option><option value="intermediate">Intermediate</option><option value="int-adv">Int./Adv.</option><option value="advanced">Advanced</option></select></div>
                       <div><label className="text-sm text-gray-500">Day</label><select value={newClass.day} onChange={e => setNewClass({ ...newClass, day: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
-                      <div><label className="text-sm text-gray-500">Start Time</label><select value={newClass.startTime} onChange={e => setNewClass({ ...newClass, startTime: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                      <div><label className="text-sm text-gray-500">End Time</label><select value={newClass.endTime} onChange={e => setNewClass({ ...newClass, endTime: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                      <div><label className="text-sm text-gray-500">Start Time</label><input type="text" value={newClass.startTime} onChange={e => setNewClass({ ...newClass, startTime: e.target.value })} placeholder="e.g. 3:15 PM" className="w-full p-2 border border-gray-300 rounded-lg" /></div>
+                      <div><label className="text-sm text-gray-500">End Time</label><input type="text" value={newClass.endTime} onChange={e => setNewClass({ ...newClass, endTime: e.target.value })} placeholder="e.g. 4:45 PM" className="w-full p-2 border border-gray-300 rounded-lg" /></div>
                       <div><label className="text-sm text-gray-500">Start Date</label><input type="date" value={newClass.startDate} onChange={e => setNewClass({ ...newClass, startDate: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
                       <div><label className="text-sm text-gray-500">End Date</label><input type="date" value={newClass.endDate} onChange={e => setNewClass({ ...newClass, endDate: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
                       <div><label className="text-sm text-gray-500">Season</label><select value={newClass.season} onChange={e => setNewClass({ ...newClass, season: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="">No Season</option><option value="winter">❄️ Winter</option><option value="spring">🌸 Spring</option><option value="summer">☀️ Summer</option><option value="fall">🍂 Fall</option></select></div>
-                      <div><label className="text-sm text-gray-500">Min Age</label><input type="number" min="0" value={newClass.minAge} onChange={e => setNewClass({ ...newClass, minAge: parseInt(e.target.value) || 0 })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
-                      <div><label className="text-sm text-gray-500">Max Age</label><input type="number" min="0" value={newClass.maxAge} onChange={e => setNewClass({ ...newClass, maxAge: parseInt(e.target.value) || 100 })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
-                      <div><label className="text-sm text-gray-500">Price ($)</label><input type="number" min="0" step="0.01" value={newClass.price} onChange={e => setNewClass({ ...newClass, price: parseFloat(e.target.value) || 0 })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
+                      {newClass.type === 'junior-clinic' && (<><div><label className="text-sm text-gray-500">Min Age</label><input type="number" min="0" value={newClass.minAge} onChange={e => setNewClass({ ...newClass, minAge: parseInt(e.target.value) || 0 })} className="w-full p-2 border border-gray-300 rounded-lg" /></div>
+                      <div><label className="text-sm text-gray-500">Max Age</label><input type="number" min="0" value={newClass.maxAge} onChange={e => setNewClass({ ...newClass, maxAge: parseInt(e.target.value) || 100 })} className="w-full p-2 border border-gray-300 rounded-lg" /></div></>)}
+                      <div><label className="text-sm text-gray-500">Price ($)</label><input type="text" inputMode="decimal" value={newClass.price} onChange={e => setNewClass({ ...newClass, price: parseFloat(e.target.value) || 0 })} className="w-full p-2 border border-gray-300 rounded-lg" placeholder="350-700" /></div>
                     </div>
                     <button type="submit" className="mt-4 w-full text-white bg-green-600 hover:bg-green-700 rounded-lg text-sm font-medium py-2">Add Class</button>
                   </form>
@@ -1159,8 +1168,8 @@ export default function AdminDashboard() {
                   }}>
                     <div className="grid grid-cols-2 gap-4">
                       <div><label className="text-sm text-gray-500">Day</label><select value={openTimeDay} onChange={e => setOpenTimeDay(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg">{daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
-                      <div><label className="text-sm text-gray-500">Start Time</label><select value={openTimeStart} onChange={e => setOpenTimeStart(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg">{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                      <div><label className="text-sm text-gray-500">End Time</label><select value={openTimeEnd} onChange={e => setOpenTimeEnd(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg">{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                      <div><label className="text-sm text-gray-500">Start Time</label><input type="text" value={openTimeStart} onChange={e => setOpenTimeStart(e.target.value)} placeholder="e.g. 6:30 AM" className="w-full p-2 border border-gray-300 rounded-lg" /></div>
+                      <div><label className="text-sm text-gray-500">End Time</label><input type="text" value={openTimeEnd} onChange={e => setOpenTimeEnd(e.target.value)} placeholder="e.g. 8:00 AM" className="w-full p-2 border border-gray-300 rounded-lg" /></div>
                       <div><label className="text-sm text-gray-500">Court</label><select value={openTimeCourt} onChange={e => setOpenTimeCourt(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg"><option value="1">Court 1</option><option value="2">Court 2</option><option value="3">Court 3</option></select></div>
                     </div>
                     <button type="submit" className="mt-4 w-full text-white bg-green-600 hover:bg-green-700 rounded-lg text-sm font-medium py-2">Add Open Time</button>
@@ -1173,8 +1182,8 @@ export default function AdminDashboard() {
           {/* ── Schedule Blocks ───────────────────────────────────────────── */}
           {activeSection === 'scheduleblocks' && (
             <div>
-              <h2 className="text-xl font-bold text-green-900 mb-6 flex items-center gap-2"><Ban className="w-5 h-5 text-red-500" /> Schedule Blocks</h2>
-              <p className="text-gray-600 text-sm mb-6">Block times for lunch breaks, facility closures, maintenance, or delayed openings. These blocks are reflected in availability across the site.</p>
+              <h2 className="text-xl font-bold text-green-900 mb-6 flex items-center gap-2"><Ban className="w-5 h-5 text-red-500" /> Clinic Breaks & Club Holidays</h2>
+              <p className="text-gray-600 text-sm mb-6">Manage clinic breaks (when the club is open but clinics are not running — those times become available for open court rental) and club holidays (when the entire facility is closed).</p>
               <div className="grid sm:grid-cols-2 gap-6">
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                   <h3 className="font-bold text-green-900 mb-4">Active Blocks</h3>
@@ -1189,7 +1198,7 @@ export default function AdminDashboard() {
                             <p className="text-sm text-red-700">{block.reason}</p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${block.block_type === 'closure' ? 'bg-red-100 text-red-700' : block.block_type === 'lunch' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>{block.block_type}</span>
+                            <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${block.block_type === 'club_holiday' ? 'bg-red-100 text-red-700' : block.block_type === 'clinic_break' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>{block.block_type === 'clinic_break' ? 'Clinic Break' : block.block_type === 'club_holiday' ? 'Club Holiday' : block.block_type}</span>
                             <button onClick={async () => { try { await api.deleteScheduleBlock(block.id); setScheduleBlocks(scheduleBlocks.filter(b => b.id !== block.id)); } catch (err) { console.error(err); } }} className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-lg hover:bg-red-200"><Trash2 className="w-3 h-3 inline" /> Remove</button>
                           </div>
                         </div>
@@ -1221,9 +1230,9 @@ export default function AdminDashboard() {
                     <div className="grid grid-cols-2 gap-4">
                       <div><label className="text-sm text-gray-500">Day</label><select value={newBlock.day} onChange={e => setNewBlock({ ...newBlock, day: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}<option value="all">Every Day</option></select></div>
                       <div><label className="text-sm text-gray-500">Specific Date (optional)</label><input type="date" value={newBlock.date} onChange={e => setNewBlock({ ...newBlock, date: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" placeholder="Optional" /></div>
-                      <div><label className="text-sm text-gray-500">Type</label><select value={newBlock.blockType} onChange={e => setNewBlock({ ...newBlock, blockType: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="lunch">Lunch Break</option><option value="closure">Closure</option><option value="delay">Delayed Opening</option><option value="maintenance">Maintenance</option></select></div>
-                      <div><label className="text-sm text-gray-500">Start Time</label><select value={newBlock.startTime} onChange={e => setNewBlock({ ...newBlock, startTime: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                      <div><label className="text-sm text-gray-500">End Time</label><select value={newBlock.endTime} onChange={e => setNewBlock({ ...newBlock, endTime: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg">{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                      <div><label className="text-sm text-gray-500">Type</label><select value={newBlock.blockType} onChange={e => setNewBlock({ ...newBlock, blockType: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg"><option value="clinic_break">Clinic Break (club open, time available)</option><option value="club_holiday">Club Holiday (facility closed)</option><option value="delay">Delayed Opening</option><option value="maintenance">Maintenance</option></select></div>
+                      <div><label className="text-sm text-gray-500">Start Time</label><input type="text" value={newBlock.startTime} onChange={e => setNewBlock({ ...newBlock, startTime: e.target.value })} placeholder="e.g. 12:00 PM" className="w-full p-2 border border-gray-300 rounded-lg" /></div>
+                      <div><label className="text-sm text-gray-500">End Time</label><input type="text" value={newBlock.endTime} onChange={e => setNewBlock({ ...newBlock, endTime: e.target.value })} placeholder="e.g. 1:00 PM" className="w-full p-2 border border-gray-300 rounded-lg" /></div>
                       <div className="col-span-2"><label className="text-sm text-gray-500">Reason</label><input type="text" value={newBlock.reason} onChange={e => setNewBlock({ ...newBlock, reason: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg" placeholder="e.g., Lunch break, Maintenance, Weather closure" /></div>
                     </div>
                     <button type="submit" className="mt-4 w-full text-white bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium py-2">Add Schedule Block</button>
@@ -1466,7 +1475,7 @@ export default function AdminDashboard() {
                       type="text"
                       value={paymentConfig.venmo_handle}
                       onChange={(e) => setPaymentConfig({ ...paymentConfig, venmo_handle: e.target.value })}
-                      placeholder="@Gina-Tennis"
+                      placeholder="@gina-genovese-6"
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none transition-colors"
                     />
                     <p className="text-xs text-gray-500 mt-1">Shown to customers when they select Venmo payment.</p>
@@ -1477,10 +1486,10 @@ export default function AdminDashboard() {
                       type="text"
                       value={paymentConfig.zelle_info}
                       onChange={(e) => setPaymentConfig({ ...paymentConfig, zelle_info: e.target.value })}
-                      placeholder="ginas@tennis.com or phone number"
+                      placeholder="ginastennisworld@gmail.com"
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none transition-colors"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Email or phone number customers use to send Zelle payments.</p>
+                    <p className="text-xs text-gray-500 mt-1">Email or phone number customers use to send Zelle payments. Will display as "Gina Rose Enterprises LLC".</p>
                   </div>
                 </div>
                 <button

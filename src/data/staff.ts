@@ -4,7 +4,6 @@ export interface StaffMember {
   role: string;
   bio: string;
   image?: string;
-  certifications?: string[];
 }
 
 export const staff: StaffMember[] = [
@@ -14,7 +13,6 @@ export const staff: StaffMember[] = [
     role: 'Owner/Head Coach',
     bio: 'Gina played on tour, coached 25 nationally ranked juniors, and still enjoys teaching tennis.',
     image: '/gina.png',
-    certifications: ['USPTA Certified', 'ACE Attack Certified Instructor'],
   },
   {
     id: 'wendy',
@@ -22,7 +20,6 @@ export const staff: StaffMember[] = [
     role: 'Tennis Director/Coach',
     bio: 'Wendy is our go-to person for stringing, registration, customer service and instruction.',
     image: '/wendy.png',
-    certifications: ['USPTA Certified'],
   },
   {
     id: 'phil',
@@ -30,7 +27,13 @@ export const staff: StaffMember[] = [
     role: 'Coach',
     bio: 'Phil has been teaching at Gina\'s Tennis World for over 10 years. He makes learning tennis FUN!',
     image: '/phil.png',
-    certifications: ['PTR Certified'],
+  },
+  {
+    id: 'gregg',
+    name: 'Gregg',
+    role: 'Coach',
+    bio: 'Gregg brings energy and expertise to every session. Bio coming soon!',
+    image: '/gregg.png',
   },
 ];
 

@@ -54,8 +54,8 @@ class Settings(BaseSettings):
     pay_at_location_enabled: bool = True
 
     # Payment method display info (shown to customers)
-    venmo_handle: str = ""       # e.g. "@Gina-Tennis"
-    zelle_info: str = ""         # e.g. "ginas@tennis.com" or phone number
+    venmo_handle: str = "@gina-genovese-6"
+    zelle_info: str = "ginastennisworld@gmail.com"
 
     # Email Configuration (transactional emails)
     email_provider: str = "console"       # "console" (dev), "sendgrid", "postmark", "mailgun"
