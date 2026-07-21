@@ -448,6 +448,12 @@ export const api = {
   unenroll: (enrollmentId: string) =>
     axiosInstance.delete<MessageResponse>(`/classes/enroll/${enrollmentId}`),
 
+  updateEnrollmentStatus: (enrollmentId: string, status: string) =>
+    axiosInstance.patch<EnrollmentOut>(`/classes/enroll/${enrollmentId}/status`, { status }),
+
+  resetClassEnrollments: (classId: string) =>
+    axiosInstance.post<MessageResponse>(`/classes/${classId}/reset-enrollments`),
+
   // ── Bookings ───────────────────────────────────────────────────────────
   getBookings: (filters?: { status?: string; user_id?: string }) =>
     axiosInstance.get<BookingOut[]>("/bookings", { params: filters }),

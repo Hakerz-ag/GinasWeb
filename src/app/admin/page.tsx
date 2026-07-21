@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import LayoutShell from '@/components/LayoutShell';
-import { api, ClassOut, UserOut, OpenTimeOut, AssessmentOut, ScheduleBlockOut, ChatMessageOut, PaymentMethodConfig } from '@/lib/api';
+import { api, ClassOut, UserOut, OpenTimeOut, AssessmentOut, ScheduleBlockOut, ChatMessageOut, PaymentMethodConfig, EnrollmentOut } from '@/lib/api';
 import {
   Users,
   Calendar,
@@ -97,6 +97,9 @@ export default function AdminDashboard() {
   const [spotlightFiles, setSpotlightFiles] = useState<{ adult?: File | null; teen?: File | null }>({});
   const [spotlightDesc, setSpotlightDesc] = useState('');
   const [spotlights, setSpotlights] = useState<any[]>([]);
+  const [enrollments, setEnrollments] = useState<EnrollmentOut[]>([]);
+  const [enrollmentsLoading, setEnrollmentsLoading] = useState(false);
+  const [selectedEnrollClassId, setSelectedEnrollClassId] = useState<string | null>(null);
 
   // Fetch data from API on mount
   useEffect(() => {
@@ -145,6 +148,25 @@ export default function AdminDashboard() {
     fetchData();
     fetchPaymentConfig();
   }, [isAuthenticated, user, loading, justLoggedOut, router]);
+
+  // Fetch enrollments when the enrollments tab is active
+  const fetchEnrollments = async () => {
+    setEnrollmentsLoading(true);
+    try {
+      const res = await api.getEnrollments();
+      setEnrollments(res.data);
+    } catch (err) {
+      console.error('Failed to fetch enrollments:', err);
+    } finally {
+      setEnrollmentsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection === 'enrollments' && isAuthenticated && user?.role === 'admin') {
+      fetchEnrollments();
+    }
+  }, [activeSection]);
 
   if (loading) return null;
   if (!isAuthenticated || !user) return null;
@@ -941,6 +963,19 @@ export default function AdminDashboard() {
                       price: editClass.price, description: '',
                     });
                     setClasses(classes.map(c => c.id === editingClass.id ? res.data : c));
+                    // Reset enrollments to pending so students must re-register
+                    try {
+                      const resetRes = await api.resetClassEnrollments(editingClass.id);
+                      alert(`Class updated! ${resetRes.data.message}`);
+                    } catch (resetErr) {
+                      console.error('Failed to reset enrollments:', resetErr);
+                      alert('Class updated, but failed to reset enrollments. Students may need to re-register manually.');
+                    }
+                    // Refresh users data to reflect enrollment changes
+                    try {
+                      const usersRes = await api.getUsers();
+                      setUsers(usersRes.data);
+                    } catch (err) { console.error(err); }
                     setEditingClass(null);
                   } catch (err) { console.error(err); alert('Failed to update class'); }
                 }}>
@@ -1651,63 +1686,245 @@ export default function AdminDashboard() {
           {activeSection === 'enrollments' && (
             <div>
               <h2 className="text-xl font-bold text-green-900 mb-6 flex items-center gap-2"><Users className="w-5 h-5 text-yellow-500" /> Enrollment Requests</h2>
-              <p className="text-gray-600 text-sm mb-6">Review and approve or deny class enrollment requests. Gina decides the appropriate level placement.</p>
-              {users.filter(u => u.role === 'customer' && u.classes && u.classes.length > 0).length === 0 ? (
-                <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-100 text-center">
-                  <Users className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-500 text-sm">No enrollment requests yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {users.filter(u => u.role === 'customer' && u.classes && u.classes.length > 0).map(u => (
-                    <div key={u.id} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-                      <div className="flex items-center justify-between mb-3">
+              <p className="text-gray-600 text-sm mb-6">Review and approve or deny class enrollment requests. Returning students have priority.</p>
+
+              {/* Class filter */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Filter by class:</label>
+                <select
+                  value={selectedEnrollClassId || ''}
+                  onChange={(e) => setSelectedEnrollClassId(e.target.value || null)}
+                  className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                >
+                  <option value="">All Classes</option>
+                  {classes.map(cls => (
+                    <option key={cls.id} value={cls.id}>{cls.title} ({cls.day_of_week} {cls.start_time})</option>
+                  ))}
+                </select>
+              </div>
+
+              {enrollmentsLoading ? (
+                <div className="text-center py-8 text-gray-500">Loading enrollments...</div>
+              ) : (() => {
+                // Filter enrollments by selected class
+                const filteredEnrollments = selectedEnrollClassId
+                  ? enrollments.filter(e => e.class_id === selectedEnrollClassId)
+                  : enrollments;
+
+                // Only show pending enrollments (need approval)
+                const pendingEnrollments = filteredEnrollments.filter(e => e.status === 'pending');
+
+                if (pendingEnrollments.length === 0) {
+                  return (
+                    <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-100 text-center">
+                      <CheckCircle className="w-10 h-10 text-green-300 mx-auto mb-2" />
+                      <p className="text-gray-500 text-sm">No pending enrollment requests. All caught up!</p>
+                    </div>
+                  );
+                }
+
+                // Categorize enrollments
+                // Returning: user was previously in this class (status was reset to pending)
+                // Existing: user is enrolled in other classes but new to this one
+                // Brand New: user is not enrolled in any other class
+                const returningStudents: EnrollmentOut[] = [];
+                const existingStudents: EnrollmentOut[] = [];
+                const brandNewStudents: EnrollmentOut[] = [];
+
+                pendingEnrollments.forEach(enr => {
+                  const user = users.find(u => u.id === enr.user_id);
+                  if (!user) return;
+
+                  // Check if user has other enrollments (in any class, not just this one)
+                  const otherEnrollments = enrollments.filter(e => e.user_id === enr.user_id && e.id !== enr.id);
+                  const hasOtherActiveEnrollments = otherEnrollments.some(e => e.status === 'active' || e.status === 'approved');
+
+                  // Check if user was previously in this class (has a pending status that was reset)
+                  // A "returning" student is one who has other active enrollments AND is applying for this class
+                  // A "brand new" student has no other enrollments at all
+
+                  if (hasOtherActiveEnrollments) {
+                    // They're in other classes - check if they were previously in THIS class
+                    const wasInThisClass = otherEnrollments.some(e => e.class_id === enr.class_id);
+                    if (wasInThisClass) {
+                      returningStudents.push(enr);
+                    } else {
+                      existingStudents.push(enr);
+                    }
+                  } else {
+                    // No other active enrollments - could be brand new or returning to this specific class
+                    // Check if they have any other enrollments at all (even pending/denied)
+                    const hasAnyOtherEnrollments = otherEnrollments.length > 0;
+                    if (hasAnyOtherEnrollments) {
+                      existingStudents.push(enr);
+                    } else {
+                      brandNewStudents.push(enr);
+                    }
+                  }
+                });
+
+                const renderEnrollmentCard = (enr: EnrollmentOut, category: 'returning' | 'existing' | 'brandNew') => {
+                  const user = users.find(u => u.id === enr.user_id);
+                  if (!user) return null;
+                  const cls = classes.find(c => c.id === enr.class_id);
+                  const subAccount = user.sub_accounts?.find(sa => sa.id === enr.sub_account_id);
+                  const displayName = subAccount ? subAccount.name : user.name;
+
+                  const categoryColors = {
+                    returning: 'border-l-4 border-l-green-500 bg-green-50/50',
+                    existing: 'border-l-4 border-l-blue-500 bg-blue-50/50',
+                    brandNew: 'border-l-4 border-l-yellow-500 bg-yellow-50/50',
+                  };
+                  const categoryLabels = {
+                    returning: { text: 'Returning', color: 'bg-green-100 text-green-700' },
+                    existing: { text: 'Existing Student', color: 'bg-blue-100 text-blue-700' },
+                    brandNew: { text: 'Brand New', color: 'bg-yellow-100 text-yellow-700' },
+                  };
+
+                  return (
+                    <div key={enr.id} className={`rounded-xl p-4 shadow-sm border border-gray-100 ${categoryColors[category]}`}>
+                      <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white font-bold">{u.name.charAt(0)}</div>
+                          <div className="w-9 h-9 bg-green-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                            {displayName.charAt(0)}
+                          </div>
                           <div>
-                            <p className="font-semibold text-green-900">{u.name}</p>
-                            <p className="text-xs text-gray-500">{u.email}</p>
+                            <p className="font-semibold text-green-900 text-sm">{displayName}</p>
+                            <p className="text-xs text-gray-500">{user.email}</p>
+                            {subAccount && <p className="text-xs text-gray-400">Child of {user.name}</p>}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${SKILL_COLORS[u.skill_level] || 'bg-gray-100 text-gray-700'}`}>
-                            {u.skill_level ? u.skill_level.charAt(0).toUpperCase() + u.skill_level.slice(1) : 'No Level'}
-                          </span>
-                          <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${u.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                            {u.status}
-                          </span>
-                        </div>
+                        <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${categoryLabels[category].color}`}>
+                          {categoryLabels[category].text}
+                        </span>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {u.classes.map((cls, idx) => {
-                          const classData = classes.find(c => c.title === cls);
-                          return (
-                            <span key={idx} className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg">
-                              {cls}
-                              {classData && <span className="text-blue-400 ml-1">({classData.day_of_week} {classData.start_time})</span>}
-                            </span>
-                          );
-                        })}
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg">
+                          {cls ? `${cls.title} (${cls.day_of_week} ${cls.start_time})` : 'Unknown Class'}
+                        </span>
+                        <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${SKILL_COLORS[subAccount?.skill_level || user.skill_level] || 'bg-gray-100 text-gray-700'}`}>
+                          {(subAccount?.skill_level || user.skill_level) ? (subAccount?.skill_level || user.skill_level).charAt(0).toUpperCase() + (subAccount?.skill_level || user.skill_level).slice(1) : 'No Level'}
+                        </span>
                       </div>
-                      <div className="mt-3 flex items-center gap-2">
-                        <span className="text-xs text-gray-500">Set level:</span>
-                        <div className="flex gap-1">
-                          {SKILL_LEVELS.filter(l => l !== 'none').map(level => (
-                            <button key={level} onClick={async () => {
-                              try {
-                                await api.setSkillLevel(u.id, level);
-                                setUsers(users.map(usr => usr.id === u.id ? { ...usr, skill_level: level, assessment_completed: true } : usr));
-                              } catch (err) { console.error(err); }
-                            }} className={`px-2 py-1 text-xs rounded-lg font-medium transition-colors ${u.skill_level === level ? SKILL_COLORS[level] + ' ring-2 ring-green-600' : 'bg-gray-100 text-gray-600 hover:bg-green-50'}`}>
-                              {level === 'adv-beg' ? 'Adv.Beg' : level === 'int-adv' ? 'Int/Adv' : level.charAt(0).toUpperCase() + level.slice(1)}
-                            </button>
-                          ))}
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={async () => {
+                            try {
+                              await api.updateEnrollmentStatus(enr.id, 'approved');
+                              // Refresh enrollments
+                              const res = await api.getEnrollments();
+                              setEnrollments(res.data);
+                              // Refresh users to update class lists
+                              const usersRes = await api.getUsers();
+                              setUsers(usersRes.data);
+                            } catch (err) { console.error(err); alert('Failed to approve enrollment'); }
+                          }}
+                          className="px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1"
+                        >
+                          <CheckCircle className="w-3.5 h-3.5" /> Accept
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await api.updateEnrollmentStatus(enr.id, 'denied');
+                              // Refresh enrollments
+                              const res = await api.getEnrollments();
+                              setEnrollments(res.data);
+                              // Refresh users
+                              const usersRes = await api.getUsers();
+                              setUsers(usersRes.data);
+                            } catch (err) { console.error(err); alert('Failed to deny enrollment'); }
+                          }}
+                          className="px-3 py-1.5 bg-red-500 text-white text-xs font-semibold rounded-lg hover:bg-red-600 transition-colors flex items-center gap-1"
+                        >
+                          <X className="w-3.5 h-3.5" /> Deny
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                  );
+                };
+
+                return (
+                  <div className="space-y-8">
+                    {/* Returning Students */}
+                    {returningStudents.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-bold text-green-900 mb-3 flex items-center gap-2">
+                          <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+                          Returning Students <span className="text-sm font-normal text-gray-500">({returningStudents.length}) — Priority</span>
+                        </h3>
+                        <p className="text-xs text-gray-500 mb-3">These students were previously enrolled in this class and are re-registering.</p>
+                        <div className="space-y-3">
+                          {returningStudents.map(enr => renderEnrollmentCard(enr, 'returning'))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Existing Students */}
+                    {existingStudents.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-bold text-green-900 mb-3 flex items-center gap-2">
+                          <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
+                          Existing Students <span className="text-sm font-normal text-gray-500">({existingStudents.length}) — From other classes</span>
+                        </h3>
+                        <p className="text-xs text-gray-500 mb-3">These students are already enrolled in other classes at Gina&apos;s Tennis World.</p>
+                        <div className="space-y-3">
+                          {existingStudents.map(enr => renderEnrollmentCard(enr, 'existing'))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Brand New Students */}
+                    {brandNewStudents.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-bold text-green-900 mb-3 flex items-center gap-2">
+                          <span className="w-3 h-3 bg-yellow-500 rounded-full"></span>
+                          Brand New Students <span className="text-sm font-normal text-gray-500">({brandNewStudents.length}) — First time</span>
+                        </h3>
+                        <p className="text-xs text-gray-500 mb-3">These students are not enrolled in any other classes yet.</p>
+                        <div className="space-y-3">
+                          {brandNewStudents.map(enr => renderEnrollmentCard(enr, 'brandNew'))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Already Approved/Active Enrollments */}
+                    {(() => {
+                      const approvedEnrollments = filteredEnrollments.filter(e => e.status === 'approved' || e.status === 'active');
+                      if (approvedEnrollments.length === 0) return null;
+                      return (
+                        <div>
+                          <h3 className="text-lg font-bold text-green-900 mb-3 flex items-center gap-2">
+                            <CheckCircle className="w-5 h-5 text-green-500" />
+                            Approved Enrollments <span className="text-sm font-normal text-gray-500">({approvedEnrollments.length})</span>
+                          </h3>
+                          <div className="space-y-2">
+                            {approvedEnrollments.map(enr => {
+                              const user = users.find(u => u.id === enr.user_id);
+                              if (!user) return null;
+                              const cls = classes.find(c => c.id === enr.class_id);
+                              const subAccount = user.sub_accounts?.find(sa => sa.id === enr.sub_account_id);
+                              const displayName = subAccount ? subAccount.name : user.name;
+                              return (
+                                <div key={enr.id} className="flex items-center justify-between bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white font-bold text-xs">{displayName.charAt(0)}</div>
+                                    <div>
+                                      <p className="font-medium text-green-900 text-sm">{displayName}</p>
+                                      <p className="text-xs text-gray-500">{cls ? `${cls.title} (${cls.day_of_week} ${cls.start_time})` : 'Unknown'}</p>
+                                    </div>
+                                  </div>
+                                  <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-green-100 text-green-700">{enr.status}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>

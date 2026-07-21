@@ -23,6 +23,7 @@ export default function ClassesPage() {
   const [classes, setClasses] = useState<ClassOut[]>([]);
   const [enrollingClassId, setEnrollingClassId] = useState<string | null>(null);
   const [enrolledClassIds, setEnrolledClassIds] = useState<Set<string>>(new Set());
+  const [pendingClassIds, setPendingClassIds] = useState<Set<string>>(new Set());
   const [enrollError, setEnrollError] = useState<string | null>(null);
   const [enrollSuccess, setEnrollSuccess] = useState<string | null>(null);
   // Payment modal state
@@ -71,8 +72,10 @@ export default function ClassesPage() {
   useEffect(() => {
     if (isAuthenticated && user) {
       api.getEnrollments({ user_id: user.id }).then((res) => {
-        const enrolledIds = new Set(res.data.map((e) => e.class_id));
+        const enrolledIds = new Set(res.data.filter((e) => e.status === 'active' || e.status === 'approved').map((e) => e.class_id));
+        const pendingIds = new Set(res.data.filter((e) => e.status === 'pending').map((e) => e.class_id));
         setEnrolledClassIds(enrolledIds);
+        setPendingClassIds(pendingIds);
       }).catch(() => {});
     }
   }, [isAuthenticated, user]);
@@ -143,12 +146,7 @@ export default function ClassesPage() {
       setEnrollSuccess(selectedClass.id);
       setPaymentSuccess(selectedClass.id);
       setShowPaymentModal(false);
-      // Update current_students count locally
-      setClasses((prev) =>
-        prev.map((c) =>
-          c.id === selectedClass.id ? { ...c, current_students: c.current_students + (selectedKids.length || 1) } : c
-        )
-      );
+      // Note: current_students is not incremented locally because enrollment is pending approval
     } catch (err: any) {
       const detail = err?.response?.data?.detail || 'Failed to complete enrollment. Please try again.';
       setEnrollError(detail);
@@ -349,15 +347,19 @@ export default function ClassesPage() {
                     {/* Enrollment button */}
                     {paymentSuccess === cls.id ? (
                       <div className="btn-primary w-full text-center mt-4 bg-green-600 flex items-center justify-center gap-2">
-                        <CheckCircle className="w-4 h-4" /> Enrolled & Payment Recorded!
+                        <CheckCircle className="w-4 h-4" /> Payment Recorded — Pending Approval
                       </div>
                     ) : enrollSuccess === cls.id ? (
-                      <div className="btn-primary w-full text-center mt-4 bg-green-600 flex items-center justify-center gap-2">
-                        <CheckCircle className="w-4 h-4" /> Enrolled!
+                      <div className="btn-primary w-full text-center mt-4 bg-yellow-500 flex items-center justify-center gap-2">
+                        <Clock className="w-4 h-4" /> Pending Approval
                       </div>
                     ) : enrolledClassIds.has(cls.id) ? (
                       <div className="w-full text-center mt-4 px-4 py-2 bg-green-100 text-green-700 rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
-                        <CheckCircle className="w-4 h-4" /> Already Enrolled
+                        <CheckCircle className="w-4 h-4" /> Enrolled
+                      </div>
+                    ) : pendingClassIds.has(cls.id) ? (
+                      <div className="w-full text-center mt-4 px-4 py-2 bg-yellow-100 text-yellow-700 rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
+                        <Clock className="w-4 h-4" /> Pending Approval
                       </div>
                     ) : !isAuthenticated ? (
                       <Link

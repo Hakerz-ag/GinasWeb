@@ -210,9 +210,8 @@ def enroll_in_class(body: EnrollmentCreate, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=409, detail=f"{enrollee_name} is already enrolled in this class")
 
-    # Enroll as active (no capacity limit)
-    status = "active"
-    cls.current_students += 1
+    # Enroll as pending — Gina must approve before student is confirmed
+    status = "pending"
 
     enrollment = ClassEnrollment(
         user_id=body.user_id,
@@ -261,8 +260,8 @@ def bulk_enroll(body: BulkEnrollmentCreate, db: Session = Depends(get_db)):
         if existing:
             raise HTTPException(status_code=409, detail="You are already enrolled in this class")
 
-        status = "active"
-        cls.current_students += 1
+        # Enroll as pending — Gina must approve
+        status = "pending"
 
         enrollment = ClassEnrollment(user_id=body.user_id, class_id=body.class_id, status=status)
         db.add(enrollment)
@@ -294,9 +293,8 @@ def bulk_enroll(body: BulkEnrollmentCreate, db: Session = Depends(get_db)):
         if existing:
             raise HTTPException(status_code=409, detail=f"{sub.name} is already enrolled in this class")
 
-        # Enroll as active (no capacity limit)
-        status = "active"
-        cls.current_students += 1
+        # Enroll as pending — Gina must approve
+        status = "pending"
 
         enrollment = ClassEnrollment(
             user_id=body.user_id,
@@ -546,3 +544,57 @@ def unenroll(enrollment_id: str, db: Session = Depends(get_db)):
     db.delete(enr)
     db.commit()
     return MessageResponse(message="Unenrolled from class")
+
+
+@router.patch("/enroll/{enrollment_id}/status", response_model=EnrollmentOut)
+def update_enrollment_status(enrollment_id: str, status: str = Body(..., embed=True), db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
+    """Update the status of an enrollment (approve, deny, waitlist). Admin only."""
+    enr = db.query(ClassEnrollment).filter(ClassEnrollment.id == enrollment_id).first()
+    if not enr:
+        raise HTTPException(status_code=404, detail="Enrollment not found")
+
+    if status not in ("approved", "denied", "waitlisted", "active", "pending"):
+        raise HTTPException(status_code=400, detail="Invalid status. Use: approved, denied, waitlisted, active, pending")
+
+    old_status = enr.status
+    enr.status = status
+
+    # If approving, increment student count
+    if status in ("approved", "active") and old_status not in ("approved", "active"):
+        cls = db.query(ClassSession).filter(ClassSession.id == enr.class_id).first()
+        if cls:
+            cls.current_students += 1
+
+    # If denying, decrement student count if was previously active/approved
+    if status == "denied" and old_status in ("approved", "active"):
+        cls = db.query(ClassSession).filter(ClassSession.id == enr.class_id).first()
+        if cls and cls.current_students > 0:
+            cls.current_students -= 1
+
+    db.commit()
+    db.refresh(enr)
+    return _enrollment_to_out(enr)
+
+
+@router.post("/{class_id}/reset-enrollments", response_model=MessageResponse)
+def reset_class_enrollments(class_id: str, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
+    """Reset all enrollments for a class to 'pending' status. Used when a class is edited so students must re-register."""
+    cls = db.query(ClassSession).filter(ClassSession.id == class_id).first()
+    if not cls:
+        raise HTTPException(status_code=404, detail="Class not found")
+
+    enrollments = db.query(ClassEnrollment).filter(ClassEnrollment.class_id == class_id).all()
+    reset_count = 0
+    for enr in enrollments:
+        if enr.status in ("active", "approved"):
+            # Decrement student count
+            if cls.current_students > 0:
+                cls.current_students -= 1
+            enr.status = "pending"
+            reset_count += 1
+        elif enr.status == "waitlisted":
+            enr.status = "pending"
+            reset_count += 1
+
+    db.commit()
+    return MessageResponse(message=f"Reset {reset_count} enrollments to pending. Students must re-register.")

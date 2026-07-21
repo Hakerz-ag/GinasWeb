@@ -42,6 +42,7 @@ export default function CustomerDashboard() {
   const [addingFamily, setAddingFamily] = useState(false);
   const [enrollingClassId, setEnrollingClassId] = useState<string | null>(null);
   const [enrolledClassIds, setEnrolledClassIds] = useState<Set<string>>(new Set());
+  const [pendingClassIds, setPendingClassIds] = useState<Set<string>>(new Set());
   const [enrollError, setEnrollError] = useState<string | null>(null);
 
   const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -63,13 +64,15 @@ export default function CustomerDashboard() {
     Promise.all([
       api.getClasses(),
       api.getBookings({ user_id: user.id }),
-    ]).then(([classesRes, bookingsRes]) => {
+      api.getEnrollments({ user_id: user.id }),
+    ]).then(([classesRes, bookingsRes, enrollmentsRes]) => {
       setClasses(classesRes.data);
       setBookings(bookingsRes.data);
-      // Set enrolled class IDs from user data
-      if (user.classes) {
-        setEnrolledClassIds(new Set(user.classes));
-      }
+      // Set enrolled class IDs from enrollment data (active/approved)
+      const activeIds = new Set(enrollmentsRes.data.filter((e) => e.status === 'active' || e.status === 'approved').map((e) => e.class_id));
+      const pendingIds = new Set(enrollmentsRes.data.filter((e) => e.status === 'pending').map((e) => e.class_id));
+      setEnrolledClassIds(activeIds);
+      setPendingClassIds(pendingIds);
     }).catch(() => {});
   }, [isAuthenticated, user]);
 
@@ -79,16 +82,12 @@ export default function CustomerDashboard() {
     setEnrollError(null);
     try {
       await api.enrollInClass(user.id, classId);
-      setEnrolledClassIds((prev) => {
+      // Enrollment is now pending approval
+      setPendingClassIds((prev) => {
         const next = new Set(prev);
         next.add(classId);
         return next;
       });
-      setClasses((prev) =>
-        prev.map((c) =>
-          c.id === classId ? { ...c, current_students: c.current_students + 1 } : c
-        )
-      );
     } catch (err: any) {
       const detail = err?.response?.data?.detail || 'Failed to enroll. Please try again.';
       setEnrollError(detail);
@@ -387,16 +386,18 @@ export default function CustomerDashboard() {
                         </div>
                         <button
                           onClick={() => handleEnroll(cls.id)}
-                          disabled={enrollingClassId === cls.id || enrolledClassIds.has(cls.id)}
+                          disabled={enrollingClassId === cls.id || enrolledClassIds.has(cls.id) || pendingClassIds.has(cls.id)}
                           className={`w-full mt-4 text-sm py-2 rounded-xl font-semibold transition-colors ${
                             enrolledClassIds.has(cls.id)
                               ? 'bg-green-100 text-green-700 cursor-default'
+                              : pendingClassIds.has(cls.id)
+                              ? 'bg-yellow-100 text-yellow-700 cursor-default'
                               : enrollingClassId === cls.id
                               ? 'bg-yellow-100 text-yellow-700 cursor-not-allowed'
                               : 'bg-green-600 text-white hover:bg-green-700'
                           }`}
                         >
-                          {enrolledClassIds.has(cls.id) ? '✓ Enrolled' : enrollingClassId === cls.id ? 'Enrolling...' : 'Join Class'}
+                          {enrolledClassIds.has(cls.id) ? '✓ Enrolled' : pendingClassIds.has(cls.id) ? '⏳ Pending Approval' : enrollingClassId === cls.id ? 'Enrolling...' : 'Join Class'}
                         </button>
                         {enrollError && (
                           <p className="text-red-500 text-xs mt-2 text-center">{enrollError}</p>
