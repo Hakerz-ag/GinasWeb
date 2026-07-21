@@ -1589,27 +1589,6 @@ export default function AdminDashboard() {
                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${paymentConfig.zelle_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
                   </button>
                 </div>
-
-                {/* Pay at Location */}
-                <div className="flex items-center justify-between p-5">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center"><MapPin className="w-5 h-5 text-amber-600" /></div>
-                    <div>
-                      <p className="font-semibold text-green-900">Pay at Location</p>
-                      <p className="text-xs text-gray-500">Customer pays when they arrive at the club.</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={async () => {
-                      const updated = { ...paymentConfig, pay_at_location_enabled: !paymentConfig.pay_at_location_enabled };
-                      setPaymentConfig(updated);
-                      try { await api.updatePaymentConfig(updated); setPaymentConfigSaved(true); setTimeout(() => setPaymentConfigSaved(false), 2000); } catch (err) { console.error(err); setPaymentConfig({ ...paymentConfig }); }
-                    }}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${paymentConfig.pay_at_location_enabled ? 'bg-green-600' : 'bg-gray-300'}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${paymentConfig.pay_at_location_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
               </div>
 
               {/* Saved indicator */}

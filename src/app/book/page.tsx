@@ -37,6 +37,61 @@ const courts = [
 
 const openTimeRate = 45; // per hour for open time rental
 
+// 2026-2027 Contract Time Schedule
+const contractSchedule = [
+  { day: 'Monday', dates: 'Sept 21 – Apr 19', off: 'Dec 28', slots: [
+    { time: '9:00 – 10:00 AM', rate: '$1,800', court: 'Court 3' },
+    { time: '2:30 – 4:00 PM', rate: '$2,430 – $2,700', court: 'Court 1, 2, 3' },
+    { time: '7:30 – 8:30 PM', rate: '$1,980', court: 'Court 3' },
+    { time: '8:30 – 9:30/10:00 PM', rate: '$1,800 – $2,700', court: 'Court 1' },
+  ]},
+  { day: 'Tuesday', dates: 'Sept 22 – Apr 20', off: 'Dec 29', slots: [
+    { time: '9:00 – 10:30 AM', rate: '$2,430', court: 'Court 2' },
+    { time: '10:30 – 11:30 AM', rate: '$1,800', court: 'Court 3' },
+    { time: '2:30 – 4:00 PM', rate: '$2,430 – $2,700', court: 'Court 1 & 3' },
+    { time: '7:00 – 8:30 PM', rate: '$2,970', court: 'Court 3' },
+    { time: '8:30 – 10:00 PM', rate: '$2,700', court: 'Court 1' },
+  ]},
+  { day: 'Wednesday', dates: 'Sept 16 – Apr 28', off: 'Nov 25, Dec 23 & 30', slots: [
+    { time: '9:00 – 10:30 AM', rate: '$2,430', court: 'Court 1' },
+    { time: '10:30 AM – 12:00 PM', rate: '$2,430', court: 'Court 1' },
+    { time: '1:00/1:30 – 2:00/2:30 PM', rate: '$1,620 – $2,430', court: 'Court 1 & 2 / $1,800 Court 3' },
+    { time: '2:30 – 3:30/4:00 PM', rate: '$1,620 – $2,430', court: 'Court 1 & 2 / $1,800 – $2,700 Court 3' },
+    { time: '4:00 – 5:00 PM', rate: '$1,800', court: 'Court 1 & 2' },
+    { time: '4:00 – 5:00/5:30 PM', rate: '$1,980 – $2,970', court: 'Court 3' },
+    { time: '5:00 – 6:00 PM', rate: '$1,800', court: 'Court 1' },
+    { time: '6:00 – 7:00 PM', rate: '$1,800', court: 'Court 1' },
+    { time: '7:00 – 8:00 PM', rate: '$1,980', court: 'Court 3' },
+    { time: '8:00 – 9:00 PM', rate: '$1,980', court: 'Court 3' },
+    { time: '9:00 – 10:00/10:30 PM', rate: '$1,800 – $2,700', court: 'Court 2' },
+  ]},
+  { day: 'Thursday', dates: 'Sept 17 – Apr 29', off: 'Nov 26, Dec 24 & 31', slots: [
+    { time: '9:00 – 10:00 AM', rate: '$1,800', court: 'Court 3' },
+    { time: '1:30 – 2:30/3:00 PM', rate: '$1,800 – $2,700', court: 'Court 3' },
+    { time: '2:30/3:00 – 4:00 PM', rate: '$1,800 – $2,700', court: 'Court 3' },
+    { time: '8:30 – 9:30/10:00 PM', rate: '$1,980 – $2,970', court: 'Court 3' },
+  ]},
+  { day: 'Friday', dates: 'Sept 18 – Apr 30', off: 'Nov 27, Dec 25 & Jan 1', slots: [
+    { time: '9:00 – 10:00 AM', rate: '$1,620', court: 'Court 2' },
+    { time: '8:00 – 9:00/9:30 PM', rate: '$1,800 – $2,700', court: 'Court 2' },
+    { time: '9:00 – 10:00 PM', rate: '$1,980', court: 'Court 3' },
+  ]},
+  { day: 'Saturday', dates: 'Sept 19 – Apr 17', off: 'Dec 26', slots: [
+    { time: '8:00 – 9:00 AM', rate: '$900 (alt. weeks)', court: 'Court 1' },
+    { time: '5:00 – 6:00 PM', rate: '$1,800', court: 'Court 2' },
+    { time: '5:30 – 7:00 PM', rate: '$2,970', court: 'Court 3' },
+    { time: '6:00 – 7:00/7:30 PM', rate: '$1,800 – $2,700', court: 'Court 1 & 2' },
+    { time: '7:00 – 8:00/8:30 PM', rate: '$1,800 – $2,700', court: 'Court 1 & 2' },
+  ]},
+  { day: 'Sunday', dates: 'Sept 20 – Apr 25', off: 'Dec 27 & Mar 28', slots: [
+    { time: '7:30/8:00 – 9:00 AM', rate: '$1,980 – $2,970', court: 'Court 3' },
+    { time: '8:00 – 9:00 AM', rate: '$1,800', court: 'Court 2' },
+    { time: '9:30 – 10:30 AM', rate: '$1,800', court: 'Court 1' },
+    { time: '8:00 – 9:00/9:30 PM', rate: '$1,980 – $2,970', court: 'Court 3' },
+    { time: '9:00 – 10:00/10:30 PM', rate: '$1,800 – $2,700', court: 'Court 1 & 2' },
+  ]},
+];
+
 export default function BookCourtPage() {
   const { user, isAuthenticated } = useAuth();
   const [bookingType, setBookingType] = useState<'court' | 'private-lesson'>('court');
@@ -510,6 +565,32 @@ export default function BookCourtPage() {
                       Courts are rented by the hour as open time slots. Select your preferred court and time — 
                       your booking will be confirmed by Gina after verification. Open times are available when not in use for clinics.
                     </p>
+                  </div>
+                </div>
+
+                {/* 2026-2027 Contract Time Schedule */}
+                <div className="mt-6">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">2026–2027 Contract Time Schedule</h3>
+                  <p className="text-xs text-gray-500 mb-3">Available contract times, rates, and court assignments for the upcoming season.</p>
+                  <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                    {contractSchedule.map(day => (
+                      <div key={day.day} className="bg-white border border-gray-200 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-bold text-green-900">{day.day}</h4>
+                          <span className="text-xs text-gray-500">{day.dates}</span>
+                        </div>
+                        {day.off && <p className="text-xs text-red-600 mb-2">Off: {day.off}</p>}
+                        <div className="space-y-1.5">
+                          {day.slots.map((slot, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-sm py-1 border-b border-gray-50 last:border-0">
+                              <span className="text-gray-700 font-medium">{slot.time}</span>
+                              <span className="text-green-700 font-semibold">{slot.rate}</span>
+                              <span className="text-gray-500 text-xs">{slot.court}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 

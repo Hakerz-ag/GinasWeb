@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api, PaymentMethodsResponse, PaymentMethodOption } from '@/lib/api';
-import { CreditCard, Banknote, FileText, Smartphone, ArrowRightLeft, MapPin, Loader2 } from 'lucide-react';
+import { CreditCard, Banknote, FileText, Smartphone, ArrowRightLeft, Loader2 } from 'lucide-react';
 
 interface PaymentMethodSelectorProps {
   /** Called when user selects a payment method and confirms */
@@ -27,7 +27,6 @@ const METHOD_ICONS: Record<string, React.ReactNode> = {
   check: <FileText className="w-5 h-5" />,
   venmo: <Smartphone className="w-5 h-5" />,
   zelle: <ArrowRightLeft className="w-5 h-5" />,
-  pay_at_location: <MapPin className="w-5 h-5" />,
 };
 
 const METHOD_DESCRIPTIONS: Record<string, string> = {
@@ -36,7 +35,6 @@ const METHOD_DESCRIPTIONS: Record<string, string> = {
   check: 'Reservation only — pay on first day of class',
   venmo: 'Send payment via Venmo — preferred method',
   zelle: 'Send payment via Zelle — preferred method',
-  pay_at_location: 'Pay when you arrive at the club',
 };
 
 export default function PaymentMethodSelector({
@@ -55,6 +53,7 @@ export default function PaymentMethodSelector({
   const [fetchingMethods, setFetchingMethods] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [zelleConfirmed, setZelleConfirmed] = useState(false);
 
   useEffect(() => {
     api.getPaymentMethods()
@@ -71,7 +70,6 @@ export default function PaymentMethodSelector({
           { id: 'check', label: 'Check', enabled: true },
           { id: 'venmo', label: 'Venmo', enabled: true },
           { id: 'zelle', label: 'Zelle', enabled: true },
-          { id: 'pay_at_location', label: 'Pay at Location', enabled: true },
         ]);
       })
       .finally(() => setFetchingMethods(false));
@@ -211,16 +209,22 @@ export default function PaymentMethodSelector({
             </p>
           )}
           {selectedMethod === 'zelle' && (
-            <p className="text-sm text-yellow-700">
-              Send ${amount.toFixed(2)} via Zelle to <strong>{zelleInfo || 'ginastennisworld@gmail.com'}</strong>. 
-              Include your name and &quot;{description || paymentType}&quot; in the memo. 
-              <br/><strong>Note:</strong> Zelle will show as &quot;Gina Rose Enterprises LLC&quot;.
-            </p>
-          )}
-          {selectedMethod === 'pay_at_location' && (
-            <p className="text-sm text-yellow-700">
-              Pay when you arrive at the club. Your spot is reserved, but payment must be made at the front desk before your session.
-            </p>
+            <div className="mt-3">
+              <p className="text-sm text-yellow-700">
+                Send ${amount.toFixed(2)} via Zelle to <strong>{zelleInfo || 'ginastennisworld@gmail.com'}</strong>. 
+                Include your name and &quot;{description || paymentType}&quot; in the memo. 
+                <br/><strong>Note:</strong> Zelle will show as &quot;Gina Rose Enterprises LLC&quot;.
+              </p>
+              <label className="mt-3 flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={zelleConfirmed}
+                  onChange={(e) => setZelleConfirmed(e.target.checked)}
+                  className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500"
+                />
+                <span className="text-sm text-gray-700 font-medium">I have sent the payment via Zelle</span>
+              </label>
+            </div>
           )}
         </div>
       )}
@@ -235,9 +239,9 @@ export default function PaymentMethodSelector({
       {/* Confirm Button */}
       <button
         onClick={handleConfirm}
-        disabled={!selectedMethod || loading || confirming}
+        disabled={!selectedMethod || loading || confirming || (selectedMethod === 'zelle' && !zelleConfirmed)}
         className={`w-full py-3 px-4 rounded-xl font-semibold text-base transition-all ${
-          !selectedMethod
+          !selectedMethod || (selectedMethod === 'zelle' && !zelleConfirmed)
             ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
             : loading || confirming
             ? 'bg-green-400 text-white cursor-wait'
