@@ -5,10 +5,10 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import CourtBooking, Payment, Notification
+from app.models import CourtBooking, Payment, Notification, User
 from app.schemas import BookingOut, BookingCreate, BookingUpdate, MessageResponse
 from app.services.auth_middleware import get_current_user, require_admin
-from app.models import User
+from app.services.email_service import send_booking_email
 
 router = APIRouter()
 
@@ -54,6 +54,26 @@ def create_booking(body: BookingCreate, db: Session = Depends(get_db)):
     db.add(booking)
     db.commit()
     db.refresh(booking)
+
+    # Send booking confirmation email to customer and notification to Gina
+    try:
+        user = db.query(User).filter(User.id == body.user_id).first()
+        if user:
+            send_booking_email(
+                to_email=user.email,
+                name=user.name,
+                court_number=body.court_number,
+                date=body.date,
+                start_time=body.start_time,
+                end_time=body.end_time,
+                contract_type=body.contract_type or "open-single",
+                ball_machine=body.ball_machine or False,
+                party_size=body.party_size or 2,
+                notes=body.notes or "",
+            )
+    except Exception:
+        pass  # Don't fail the booking if email fails
+
     return booking
 
 

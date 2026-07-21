@@ -8,6 +8,7 @@ from typing import List
 from app.database import get_db
 from app.models import Assessment, User, SubAccount
 from app.schemas import AssessmentOut, AssessmentCreate, AssessmentUpdate, MessageResponse
+from app.services.email_service import send_assessment_email
 
 router = APIRouter()
 
@@ -45,6 +46,13 @@ def create_assessment(body: AssessmentCreate, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Get sub-account name if applicable
+    sub_account_name = ""
+    if body.sub_account_id:
+        sub = db.query(SubAccount).filter(SubAccount.id == body.sub_account_id).first()
+        if sub:
+            sub_account_name = sub.name
+
     assessment = Assessment(
         user_id=body.user_id,
         sub_account_id=body.sub_account_id,
@@ -56,6 +64,20 @@ def create_assessment(body: AssessmentCreate, db: Session = Depends(get_db)):
     db.add(assessment)
     db.commit()
     db.refresh(assessment)
+
+    # Send assessment request email to customer and notification to Gina
+    try:
+        send_assessment_email(
+            to_email=user.email,
+            name=user.name,
+            date=body.date,
+            start_time=body.start_time,
+            end_time=body.end_time,
+            sub_account_name=sub_account_name,
+        )
+    except Exception:
+        pass  # Don't fail the assessment if email fails
+
     return assessment
 
 

@@ -463,6 +463,208 @@ def send_contract_time_email(
         return False
 
 
+def send_booking_email(
+    to_email: str,
+    name: str,
+    court_number: int,
+    date: str,
+    start_time: str,
+    end_time: str,
+    contract_type: str = "open-single",
+    ball_machine: bool = False,
+    party_size: int = 2,
+    notes: str = "",
+) -> bool:
+    """Send a booking confirmation email to the customer and a notification to Gina.
+
+    Called when someone books a court.
+    """
+    # Format contract type for display
+    contract_label = {
+        "open-single": "Single Session",
+        "15-week": "15-Week Contract",
+        "30-week": "30-Week Contract",
+    }.get(contract_type, contract_type)
+
+    # Build details rows
+    details = f"""
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #374151; width: 120px;">Date:</td>
+            <td style="padding: 8px 0; color: #1f2937;">{date}</td></tr>
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Time:</td>
+            <td style="padding: 8px 0; color: #1f2937;">{start_time} – {end_time}</td></tr>
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Court:</td>
+            <td style="padding: 8px 0; color: #1f2937;">Court {court_number}</td></tr>
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Type:</td>
+            <td style="padding: 8px 0; color: #1f2937;">{contract_label}</td></tr>
+    """
+    if ball_machine:
+        details += f"""
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Ball Machine:</td>
+            <td style="padding: 8px 0; color: #1f2937;">Yes 🎾</td></tr>
+        """
+    if party_size and party_size > 1:
+        details += f"""
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Party Size:</td>
+            <td style="padding: 8px 0; color: #1f2937;">{party_size} people</td></tr>
+        """
+    if notes:
+        details += f"""
+        <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Notes:</td>
+            <td style="padding: 8px 0; color: #1f2937;">{notes}</td></tr>
+        """
+
+    # Email to customer
+    user_html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #166534, #15803d); padding: 20px 30px; border-radius: 12px 12px 0 0;">
+            <h1 style="color: #facc15; margin: 0; font-size: 24px;">🎾 Booking Request Received!</h1>
+            <p style="color: #bbf7d0; margin: 5px 0 0 0; font-size: 14px;">Gina's Tennis World</p>
+        </div>
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+            <p style="color: #374151;">Hi {name},</p>
+            <p style="color: #374151;">Your court booking request has been submitted. Here are the details:</p>
+            <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border: 1px solid #bbf7d0;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    {details}
+                </table>
+            </div>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
+                Gina will review your booking and confirm it shortly. If you have any questions,
+                call us at 908-464-9591 or reply to this email.
+            </p>
+        </div>
+        <div style="background: #f0fdf4; padding: 15px 30px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none;">
+            <p style="color: #6b7280; font-size: 12px; margin: 0;">
+                This confirmation was sent from Gina's Tennis World website.
+            </p>
+        </div>
+    </div>
+    """
+
+    # Email to Gina (admin)
+    admin_html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #166534, #15803d); padding: 20px 30px; border-radius: 12px 12px 0 0;">
+            <h1 style="color: #facc15; margin: 0; font-size: 20px;">📋 New Court Booking</h1>
+        </div>
+        <div style="background: #ffffff; padding: 20px; border: 1px solid #e5e7eb; border-top: none;">
+            <p><strong>Customer:</strong> {name} ({to_email})</p>
+            <table style="width: 100%; border-collapse: collapse;">
+                {details}
+            </table>
+        </div>
+    </div>
+    """
+
+    # Send admin copy
+    try:
+        send_email(
+            to_email=settings.contact_email,
+            subject=f"New Court Booking — {name} — {date} {start_time}",
+            html_body=admin_html,
+        )
+    except Exception:
+        pass
+
+    # Send confirmation to customer
+    try:
+        return send_email(
+            to_email=to_email,
+            subject=f"Booking Request Received — {date} {start_time} — Gina's Tennis World",
+            html_body=user_html,
+        )
+    except Exception:
+        return False
+
+
+def send_assessment_email(
+    to_email: str,
+    name: str,
+    date: str,
+    start_time: str,
+    end_time: str,
+    sub_account_name: str = "",
+) -> bool:
+    """Send an assessment/private lesson request email to the customer and Gina.
+
+    Called when someone books a 1-on-1 assessment or private lesson.
+    """
+    student_label = f" ({sub_account_name})" if sub_account_name else ""
+
+    # Email to customer
+    user_html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #166534, #15803d); padding: 20px 30px; border-radius: 12px 12px 0 0;">
+            <h1 style="color: #facc15; margin: 0; font-size: 24px;">🎾 Assessment Request Received!</h1>
+            <p style="color: #bbf7d0; margin: 5px 0 0 0; font-size: 14px;">Gina's Tennis World</p>
+        </div>
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+            <p style="color: #374151;">Hi {name},</p>
+            <p style="color: #374151;">Your 1-on-1 assessment request has been submitted. Here are the details:</p>
+            <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border: 1px solid #bbf7d0;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr><td style="padding: 8px 0; font-weight: bold; color: #374151; width: 120px;">Date:</td>
+                        <td style="padding: 8px 0; color: #1f2937;">{date}</td></tr>
+                    <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Time:</td>
+                        <td style="padding: 8px 0; color: #1f2937;">{start_time} – {end_time}</td></tr>
+                    <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Type:</td>
+                        <td style="padding: 8px 0; color: #1f2937;">1-on-1 Assessment{student_label}</td></tr>
+                </table>
+            </div>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
+                Gina will review your request and confirm the session. If you have any questions,
+                call us at 908-464-9591 or reply to this email.
+            </p>
+        </div>
+        <div style="background: #f0fdf4; padding: 15px 30px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none;">
+            <p style="color: #6b7280; font-size: 12px; margin: 0;">
+                This confirmation was sent from Gina's Tennis World website.
+            </p>
+        </div>
+    </div>
+    """
+
+    # Email to Gina (admin)
+    admin_html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #166534, #15803d); padding: 20px 30px; border-radius: 12px 12px 0 0;">
+            <h1 style="color: #facc15; margin: 0; font-size: 20px;">📋 New Assessment Request</h1>
+        </div>
+        <div style="background: #ffffff; padding: 20px; border: 1px solid #e5e7eb; border-top: none;">
+            <p><strong>Customer:</strong> {name} ({to_email}){student_label}</p>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; font-weight: bold; color: #374151; width: 120px;">Date:</td>
+                    <td style="padding: 8px 0; color: #1f2937;">{date}</td></tr>
+                <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Time:</td>
+                    <td style="padding: 8px 0; color: #1f2937;">{start_time} – {end_time}</td></tr>
+                <tr><td style="padding: 8px 0; font-weight: bold; color: #374151;">Type:</td>
+                    <td style="padding: 8px 0; color: #1f2937;">1-on-1 Assessment{student_label}</td></tr>
+            </table>
+        </div>
+    </div>
+    """
+
+    # Send admin copy
+    try:
+        send_email(
+            to_email=settings.contact_email,
+            subject=f"New Assessment Request — {name}{student_label} — {date} {start_time}",
+            html_body=admin_html,
+        )
+    except Exception:
+        pass
+
+    # Send confirmation to customer
+    try:
+        return send_email(
+            to_email=to_email,
+            subject=f"Assessment Request Received — {date} — Gina's Tennis World",
+            html_body=user_html,
+        )
+    except Exception:
+        return False
+
+
 def send_broadcast_email(
     recipients: list,
     subject: str,
