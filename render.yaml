@@ -26,6 +26,10 @@ services:
       - key: GMAIL_USER
         value: ginastennisworld@gmail.com
       - key: GMAIL_APP_PASSWORD
-        sync: false
+        value: zjmdhdyyzeynfbbw
       - key: CONTACT_EMAIL
         value: ginastennisworld@gmail.com
+      - key: EMAIL_FROM_ADDRESS
+        value: ginastennisworld@gmail.com
+      - key: EMAIL_FROM_NAME
+        value: "Gina's Tennis World"

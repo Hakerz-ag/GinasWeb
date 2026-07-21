@@ -134,13 +134,24 @@ def _send_via_gmail(
             server.starttls()  # Secure the connection
             server.ehlo()
             server.login(gmail_user, gmail_app_password)
-            server.sendmail(gmail_user, to_email, msg.as_string())
+            result = server.sendmail(gmail_user, to_email, msg.as_string())
+            # sendmail returns a dict of failed recipients; empty dict = success
+            if result:
+                logger.warning(f"⚠️ Gmail SMTP partial failure for {to_email}: {result}")
+                # Still return True if the email was accepted by the server
 
         logger.info(f"✅ Email sent to {to_email} via Gmail SMTP")
         return True
 
     except smtplib.SMTPAuthenticationError as e:
         logger.error(f"❌ Gmail SMTP authentication failed: {e}. Check GMAIL_USER and GMAIL_APP_PASSWORD.")
+        return False
+    except smtplib.SMTPException as e:
+        # SMTPException with code 250 is actually a success response
+        if hasattr(e, 'smtp_code') and e.smtp_code == 250:
+            logger.info(f"✅ Email sent to {to_email} via Gmail SMTP (250 OK)")
+            return True
+        logger.error(f"❌ SMTP error sending email to {to_email}: {e}")
         return False
     except Exception as e:
         logger.error(f"❌ Failed to send email via Gmail SMTP: {e}")
