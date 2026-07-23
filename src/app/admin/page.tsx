@@ -100,6 +100,8 @@ export default function AdminDashboard() {
   const [spotlightFiles, setSpotlightFiles] = useState<{ adult?: File | null; teen?: File | null }>({});
   const [spotlightDesc, setSpotlightDesc] = useState('');
   const [spotlights, setSpotlights] = useState<any[]>([]);
+  const [editImageSpotId, setEditImageSpotId] = useState<string | null>(null);
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [enrollments, setEnrollments] = useState<EnrollmentOut[]>([]);
   const [enrollmentsLoading, setEnrollmentsLoading] = useState(false);
   const [selectedEnrollClassId, setSelectedEnrollClassId] = useState<string | null>(null);
@@ -277,9 +279,8 @@ export default function AdminDashboard() {
   const handleUploadSpotlight = async (isAdult: boolean) => {
     try {
       const file = isAdult ? spotlightFiles.adult : spotlightFiles.teen;
-      if (!file) { alert('Please select a file to upload'); return; }
       const form = new FormData();
-      form.append('image', file);
+      if (file) form.append('image', file);
       form.append('title', isAdult ? 'Student of the Month (Adult)' : 'Student of the Month (Teen)');
       form.append('description', spotlightDesc || '');
       form.append('is_adult', isAdult ? 'true' : 'false');
@@ -297,6 +298,19 @@ export default function AdminDashboard() {
       await api.deleteSpotlight(id);
       setSpotlights(spotlights.filter(s => s.id !== id));
     } catch (err) { console.error(err); alert('Failed to delete'); }
+  };
+
+  const handleUpdateSpotlightImage = async (spotId: string) => {
+    if (!editImageFile) { alert('Please select an image file'); return; }
+    try {
+      const form = new FormData();
+      form.append('image', editImageFile);
+      await api.updateSpotlight(spotId, form);
+      setEditImageSpotId(null);
+      setEditImageFile(null);
+      await loadSpotlights();
+      alert('Image updated!');
+    } catch (err) { console.error(err); alert('Failed to update image'); }
   };
 
   const toggleEmailTime = (time: string) => {
@@ -379,22 +393,22 @@ export default function AdminDashboard() {
               {/* Spotlight (Student of the Month) */}
               <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-lg font-bold text-green-900 mb-4">Student(s) of the Month</h3>
-                <p className="text-sm text-gray-500 mb-4">Upload one adult and one teen to feature on the public homepage.</p>
+                <p className="text-sm text-gray-500 mb-4">Add spotlight entries with a name and description. Images are optional — you can add them later.</p>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Adult Spotlight Image</label>
+                    <label className="text-sm font-medium text-gray-700">Adult Spotlight Image (optional)</label>
                     <input type="file" accept="image/*" onChange={(e) => setSpotlightFiles({ ...spotlightFiles, adult: e.target.files?.[0] })} />
-                    <button onClick={() => handleUploadSpotlight(true)} className="mt-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm">Upload Adult</button>
+                    <button onClick={() => handleUploadSpotlight(true)} className="mt-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm">Add Adult Spotlight</button>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Teen Spotlight Image</label>
+                    <label className="text-sm font-medium text-gray-700">Teen Spotlight Image (optional)</label>
                     <input type="file" accept="image/*" onChange={(e) => setSpotlightFiles({ ...spotlightFiles, teen: e.target.files?.[0] })} />
-                    <button onClick={() => handleUploadSpotlight(false)} className="mt-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm">Upload Teen</button>
+                    <button onClick={() => handleUploadSpotlight(false)} className="mt-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm">Add Teen Spotlight</button>
                   </div>
                 </div>
                 <div className="mt-4">
                   <label className="text-sm font-medium text-gray-700">Description</label>
-                  <textarea value={spotlightDesc} onChange={e => setSpotlightDesc(e.target.value)} className="w-full mt-2 p-3 border rounded-lg" rows={3} />
+                  <textarea value={spotlightDesc} onChange={e => setSpotlightDesc(e.target.value)} className="w-full mt-2 p-3 border rounded-lg" rows={3} placeholder="e.g. Former student, Summit #1 singles..." />
                 </div>
                 <div className="mt-6">
                   <h4 className="text-sm font-semibold text-gray-700 mb-2">Existing Spotlights</h4>
@@ -436,7 +450,11 @@ export default function AdminDashboard() {
                                 <ChevronDown className="w-4 h-4" />
                               </button>
                             </div>
-                            <img src={s.image_path} alt={s.title} className="w-16 h-16 object-cover rounded-md" />
+                            {s.image_path ? (
+                              <img src={s.image_path} alt={s.title} className="w-16 h-16 object-cover rounded-md" />
+                            ) : (
+                              <div className="w-16 h-16 bg-gray-100 rounded-md flex items-center justify-center text-gray-400 text-xs text-center">No image</div>
+                            )}
                             <div>
                               <p className="font-medium text-green-900">{s.title}</p>
                               <p className="text-xs text-gray-500">{s.description}</p>
@@ -444,6 +462,15 @@ export default function AdminDashboard() {
                           </div>
                           <div className="flex items-center gap-2">
                             <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${s.is_adult ? 'bg-blue-50 text-blue-700' : 'bg-pink-50 text-pink-700'}`}>{s.is_adult ? 'Adult' : 'Teen'}</span>
+                            {editImageSpotId === s.id ? (
+                              <div className="flex items-center gap-1">
+                                <input type="file" accept="image/*" onChange={e => setEditImageFile(e.target.files?.[0] || null)} className="text-xs" />
+                                <button onClick={() => handleUpdateSpotlightImage(s.id)} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-lg">Save</button>
+                                <button onClick={() => { setEditImageSpotId(null); setEditImageFile(null); }} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-lg">Cancel</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => setEditImageSpotId(s.id)} className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-lg">📷 Image</button>
+                            )}
                             <button onClick={() => handleDeleteSpotlight(s.id)} className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-lg">Delete</button>
                           </div>
                         </div>

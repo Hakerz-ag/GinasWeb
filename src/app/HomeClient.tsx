@@ -217,8 +217,8 @@ export default function HomeClient() {
 
       {/* ===== STUDENT(S) OF THE MONTH ===== */}
       {(() => {
-        // Only show spotlights that have both an image and a description
-        const activeSpotlights = spotlights.filter(s => s.image_path && s.description && s.description.trim().length > 0);
+        // Only show spotlights that have a description (image is optional — shows placeholder if missing)
+        const activeSpotlights = spotlights.filter(s => s.description && s.description.trim().length > 0);
         if (activeSpotlights.length === 0) return null;
         return (
           <section className="bg-white py-12">
@@ -231,7 +231,13 @@ export default function HomeClient() {
                 {activeSpotlights.map(s => (
                   <Link key={s.id} href="/spotlight" className="bg-green-50 rounded-2xl p-6 flex items-center gap-4 border border-green-100 hover:shadow-md transition-shadow">
                     <div className="w-36 h-36 rounded-lg overflow-hidden flex-shrink-0">
-                      <img src={s.image_path} alt={s.title} className="w-full h-full object-cover" />
+                      {s.image_path ? (
+                        <img src={s.image_path} alt={s.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center">
+                          <Trophy className="w-10 h-10 text-green-400" />
+                        </div>
+                      )}
                     </div>
                     <div>
                       <h3 className="font-semibold text-green-900">{s.title}</h3>

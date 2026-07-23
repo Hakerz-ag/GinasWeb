@@ -40,27 +40,32 @@ def upload_spotlight(
     description: str = Form(''),
     is_adult: bool = Form(True),
     user_id: str | None = Form(None),
-    file: UploadFile = File(...),
+    sort_order: int = Form(0),
+    file: UploadFile | None = File(None),
     db: Session = Depends(get_db),
     _admin = Depends(require_admin),
 ):
     """Upload an image and create a spotlight entry (admin only).
 
     Saves the file under `public/uploads/spotlight/` and stores the path.
+    Image is optional — entries can be created with just a title and description.
     """
-    uploads_dir = os.path.abspath(os.path.join(os.getcwd(), 'public', 'uploads', 'spotlight'))
-    os.makedirs(uploads_dir, exist_ok=True)
+    rel_path = ""
+    if file:
+        uploads_dir = os.path.abspath(os.path.join(os.getcwd(), 'public', 'uploads', 'spotlight'))
+        os.makedirs(uploads_dir, exist_ok=True)
 
-    filename = f"{file.filename}"
-    target_path = os.path.join(uploads_dir, filename)
-    try:
-        with open(target_path, 'wb') as f:
-            f.write(file.file.read())
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
+        filename = f"{file.filename}"
+        target_path = os.path.join(uploads_dir, filename)
+        try:
+            with open(target_path, 'wb') as f:
+                f.write(file.file.read())
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
 
-    rel_path = f"/uploads/spotlight/{filename}"
-    entry = Spotlight(user_id=user_id, title=title, description=description, image_path=rel_path, is_adult=is_adult)
+        rel_path = f"/uploads/spotlight/{filename}"
+
+    entry = Spotlight(user_id=user_id, title=title, description=description, image_path=rel_path, is_adult=is_adult, sort_order=sort_order)
     db.add(entry)
     db.commit()
     return MessageResponse(message="Uploaded spotlight entry")
@@ -80,6 +85,41 @@ def reorder_spotlight(
     entry.sort_order = sort_order
     db.commit()
     return MessageResponse(message="Spotlight order updated")
+
+
+@router.put("/{spot_id}", response_model=MessageResponse)
+def update_spotlight(
+    spot_id: str,
+    title: str | None = Form(None),
+    description: str | None = Form(None),
+    is_adult: bool | None = Form(None),
+    file: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+    _admin = Depends(require_admin),
+):
+    """Update a spotlight entry (admin only). Can update title, description, and/or image."""
+    entry = db.query(Spotlight).filter(Spotlight.id == spot_id).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Spotlight entry not found")
+    if title is not None:
+        entry.title = title
+    if description is not None:
+        entry.description = description
+    if is_adult is not None:
+        entry.is_adult = is_adult
+    if file:
+        uploads_dir = os.path.abspath(os.path.join(os.getcwd(), 'public', 'uploads', 'spotlight'))
+        os.makedirs(uploads_dir, exist_ok=True)
+        filename = f"{file.filename}"
+        target_path = os.path.join(uploads_dir, filename)
+        try:
+            with open(target_path, 'wb') as f:
+                f.write(file.file.read())
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
+        entry.image_path = f"/uploads/spotlight/{filename}"
+    db.commit()
+    return MessageResponse(message="Spotlight updated")
 
 
 @router.delete("/{spot_id}", response_model=MessageResponse)

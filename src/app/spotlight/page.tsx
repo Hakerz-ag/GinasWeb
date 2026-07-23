@@ -17,8 +17,8 @@ export default function StudentOfTheMonthPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const adultSpotlights = spotlights.filter(s => s.is_adult);
-  const teenSpotlights = spotlights.filter(s => !s.is_adult);
+  const adultSpotlights = spotlights.filter(s => s.is_adult && s.description);
+  const teenSpotlights = spotlights.filter(s => !s.is_adult && s.description);
 
   return (
     <LayoutShell>
@@ -69,13 +69,19 @@ export default function StudentOfTheMonthPage() {
                   <div className="grid md:grid-cols-2 gap-6">
                     {adultSpotlights.map(s => (
                       <div key={s.id} className="bg-white rounded-2xl shadow-lg overflow-hidden border border-green-100 hover:shadow-xl transition-shadow">
-                        <div className="aspect-[4/3] overflow-hidden">
-                          <img
-                            src={s.image_path}
-                            alt={s.title}
-                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
+                        {s.image_path ? (
+                          <div className="aspect-[4/3] overflow-hidden">
+                            <img
+                              src={s.image_path}
+                              alt={s.title}
+                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                            />
+                          </div>
+                        ) : (
+                          <div className="aspect-[4/3] bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center">
+                            <Trophy className="w-16 h-16 text-green-400" />
+                          </div>
+                        )}
                         <div className="p-6">
                           <h3 className="text-xl font-bold text-green-900">{s.title}</h3>
                           {s.description && (
@@ -101,13 +107,19 @@ export default function StudentOfTheMonthPage() {
                   <div className="grid md:grid-cols-2 gap-6">
                     {teenSpotlights.map(s => (
                       <div key={s.id} className="bg-white rounded-2xl shadow-lg overflow-hidden border border-blue-100 hover:shadow-xl transition-shadow">
-                        <div className="aspect-[4/3] overflow-hidden">
-                          <img
-                            src={s.image_path}
-                            alt={s.title}
-                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
+                        {s.image_path ? (
+                          <div className="aspect-[4/3] overflow-hidden">
+                            <img
+                              src={s.image_path}
+                              alt={s.title}
+                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                            />
+                          </div>
+                        ) : (
+                          <div className="aspect-[4/3] bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+                            <Trophy className="w-16 h-16 text-blue-400" />
+                          </div>
+                        )}
                         <div className="p-6">
                           <h3 className="text-xl font-bold text-green-900">{s.title}</h3>
                           {s.description && (
