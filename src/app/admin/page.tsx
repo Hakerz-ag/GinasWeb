@@ -19,6 +19,7 @@ import {
   ArrowLeft,
   Award,
   ChevronDown,
+  ChevronUp,
   Send,
   Ban,
   MessageCircle,
@@ -397,13 +398,44 @@ export default function AdminDashboard() {
                 </div>
                 <div className="mt-6">
                   <h4 className="text-sm font-semibold text-gray-700 mb-2">Existing Spotlights</h4>
+                  <p className="text-xs text-gray-500 mb-2">Drag to reorder — lower position shows first on the homepage.</p>
                   {spotlights.length === 0 ? (
                     <div className="text-sm text-gray-500">No spotlight entries yet.</div>
                   ) : (
                     <div className="space-y-2">
-                      {spotlights.map(s => (
+                      {spotlights.map((s, idx) => (
                         <div key={s.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="flex items-center gap-3">
+                            <div className="flex flex-col gap-0.5">
+                              <button onClick={async () => {
+                                if (idx === 0) return;
+                                const newOrder = spotlights.map((sp, i) => ({ id: sp.id, order: i }));
+                                // Swap current with previous
+                                const temp = newOrder[idx].order;
+                                newOrder[idx].order = newOrder[idx - 1].order;
+                                newOrder[idx - 1].order = temp;
+                                try {
+                                  await Promise.all(newOrder.map(item => api.reorderSpotlight(item.id, item.order)));
+                                  await loadSpotlights();
+                                } catch (err) { console.error('Failed to reorder:', err); }
+                              }} disabled={idx === 0} className={`p-1 rounded hover:bg-gray-100 ${idx === 0 ? 'opacity-30 cursor-not-allowed' : ''}`}>
+                                <ChevronUp className="w-4 h-4" />
+                              </button>
+                              <button onClick={async () => {
+                                if (idx === spotlights.length - 1) return;
+                                const newOrder = spotlights.map((sp, i) => ({ id: sp.id, order: i }));
+                                // Swap current with next
+                                const temp = newOrder[idx].order;
+                                newOrder[idx].order = newOrder[idx + 1].order;
+                                newOrder[idx + 1].order = temp;
+                                try {
+                                  await Promise.all(newOrder.map(item => api.reorderSpotlight(item.id, item.order)));
+                                  await loadSpotlights();
+                                } catch (err) { console.error('Failed to reorder:', err); }
+                              }} disabled={idx === spotlights.length - 1} className={`p-1 rounded hover:bg-gray-100 ${idx === spotlights.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}`}>
+                                <ChevronDown className="w-4 h-4" />
+                              </button>
+                            </div>
                             <img src={s.image_path} alt={s.title} className="w-16 h-16 object-cover rounded-md" />
                             <div>
                               <p className="font-medium text-green-900">{s.title}</p>

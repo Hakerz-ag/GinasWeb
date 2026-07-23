@@ -331,6 +331,7 @@ class Spotlight(Base):
     description = Column(Text, default="")
     image_path = Column(String, default="")  # path under /uploads/spotlight/
     is_adult = Column(Boolean, default=True)
+    sort_order = Column(Integer, default=0)  # lower = shown first
     created_at = Column(DateTime, server_default=func.now())
 
     user = relationship("User")

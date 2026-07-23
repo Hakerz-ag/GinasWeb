@@ -19,7 +19,7 @@ settings = get_settings()
 
 @router.get("", response_model=list)
 def list_spotlight(db: Session = Depends(get_db)):
-    entries = db.query(Spotlight).order_by(Spotlight.created_at.desc()).all()
+    entries = db.query(Spotlight).order_by(Spotlight.sort_order.asc(), Spotlight.created_at.desc()).all()
     out = []
     for e in entries:
         out.append({
@@ -29,6 +29,7 @@ def list_spotlight(db: Session = Depends(get_db)):
             'description': e.description,
             'image_path': e.image_path,
             'is_adult': e.is_adult,
+            'sort_order': e.sort_order,
         })
     return out
 
@@ -63,6 +64,22 @@ def upload_spotlight(
     db.add(entry)
     db.commit()
     return MessageResponse(message="Uploaded spotlight entry")
+
+
+@router.put("/{spot_id}/reorder", response_model=MessageResponse)
+def reorder_spotlight(
+    spot_id: str,
+    sort_order: int = Form(...),
+    db: Session = Depends(get_db),
+    _admin = Depends(require_admin),
+):
+    """Update the sort order of a spotlight entry."""
+    entry = db.query(Spotlight).filter(Spotlight.id == spot_id).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Spotlight entry not found")
+    entry.sort_order = sort_order
+    db.commit()
+    return MessageResponse(message="Spotlight order updated")
 
 
 @router.delete("/{spot_id}", response_model=MessageResponse)

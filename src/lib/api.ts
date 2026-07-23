@@ -612,6 +612,8 @@ export const api = {
     axiosInstance.post(`/spotlight`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   deleteSpotlight: (spotlightId: string) =>
     axiosInstance.delete(`/spotlight/${spotlightId}`),
+  reorderSpotlight: (spotlightId: string, sortOrder: number) =>
+    axiosInstance.put(`/spotlight/${spotlightId}/reorder`, null, { params: { sort_order: sortOrder } }),
 
   // Payment plans
   createPaymentPlan: (data: { user_id: string; total_amount: number; plan_type: string; booking_id?: string; enrollment_id?: string }) =>
