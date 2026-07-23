@@ -3,7 +3,7 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from app.models import User, SubAccount, ClassSession, CourtBooking, OpenTime, Notification, Payment
+from app.models import User, SubAccount, ClassSession, CourtBooking, OpenTime, Notification, Payment, Spotlight
 from app.services.auth import hash_password
 
 
@@ -100,6 +100,18 @@ def seed_db(db: Session):
         Payment(id="pay-5", user_id="cust-5", amount=30.00, currency="usd", status="pending", payment_type="class", payment_method="pay_at_location", related_id="cls-6", description="Junior Ball Machine Clinic", created_at=datetime(2026, 6, 5)),
     ]
     db.add_all(payments_data)
+
+    # ── Spotlight (Student of the Month) ──────────────────────────────────
+    spotlight_data = [
+        Spotlight(id="spot-1", title="Raf", description="Former student, Summit #1 singles & GTW teacher brings his daughters to develop their strokes.", image_path="", is_adult=True, sort_order=1),
+        Spotlight(id="spot-2", title="Wendy", description="Former #1 singles in Chatham & GTW teacher loves bringing in her daughter and seeing her play on the Chatham team.", image_path="", is_adult=True, sort_order=2),
+        Spotlight(id="spot-3", title="Monica", description="Former #1 doubles Newark Academy. We now work with her son to make Summit Varsity.", image_path="", is_adult=True, sort_order=3),
+        Spotlight(id="spot-4", title="Dana", description="Former #1 singles in New Providence was frustrated with clubs/pro's for her daughter in her area. She's happy to travel to GTW for her daughter.", image_path="", is_adult=True, sort_order=4),
+        Spotlight(id="spot-5", title="Chris", description="Former #1 singles at New Providence & GTW teacher moved out of NJ. When visiting NJ he brings his daughter in for lessons.", image_path="", is_adult=True, sort_order=5),
+        Spotlight(id="spot-6", title="Andy", description="Played #2 singles New Providence. Andy's parents took him to lessons 30 years ago, now they take their grandson to GTW.", image_path="", is_adult=True, sort_order=6),
+        Spotlight(id="spot-7", title="Anaya", description="Governor Livingston 1st Doubles Player — student and assistant teacher at GTW.", image_path="", is_adult=False, sort_order=7),
+    ]
+    db.add_all(spotlight_data)
 
     db.commit()
     print("✅ Database seeded with demo data.")

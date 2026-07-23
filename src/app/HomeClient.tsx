@@ -29,15 +29,15 @@ export default function HomeClient() {
   const [spotlights, setSpotlights] = useState<any[]>([]);
 
   const galleryImages = [
-    { src: '/IMG_0566.jpeg', alt: 'Families enjoying tennis together' },
-    { src: '/IMG_0651.jpeg', alt: 'Kids learning and having fun on court' },
-    { src: '/IMG_1156.jpeg', alt: 'Family tennis time at Gina\'s' },
-    { src: '/IMG_1171.jpeg', alt: 'Juniors developing their skills' },
-    { src: '/IMG_1241.jpeg', alt: 'Parents and kids on the court' },
-    { src: '/IMG_1312.jpeg', alt: 'Community and connection through tennis' },
-    { src: '/IMG_1595.jpeg', alt: 'Family fun at Gina\'s Tennis World' },
-    { src: '/IMG_1599.jpg', alt: 'Next generation of tennis players' },
-    { src: '/IMG_8764.JPG', alt: 'Making memories on the court' },
+    { src: '/IMG_0566.jpeg', alt: 'JUNIOR STUDENTS HAVING FUN AT GTW', caption: 'JUNIOR CLINIC — JUNIOR STUDENTS HAVING FUN AT GTW' },
+    { src: '/IMG_0651.jpeg', alt: 'JUNIOR STUDENTS HAVING FUN AT GTW', caption: 'JUNIOR CLINIC — JUNIOR STUDENTS HAVING FUN AT GTW' },
+    { src: '/IMG_1156.jpeg', alt: 'JUNIOR STUDENTS HAVING FUN AT GTW', caption: 'JUNIOR CLINIC — JUNIOR STUDENTS HAVING FUN AT GTW' },
+    { src: '/IMG_1171.jpeg', alt: 'JUNIOR STUDENTS HAVING FUN AT GTW', caption: 'JUNIOR CLINIC — JUNIOR STUDENTS HAVING FUN AT GTW' },
+    { src: '/IMG_1241.jpeg', alt: 'GIRLS GETTING READY FOR HIGH SCHOOL TENNIS', caption: 'GIRLS GETTING READY FOR HIGH SCHOOL TENNIS' },
+    { src: '/IMG_1312.jpeg', alt: 'GIRLS GETTING READY FOR HIGH SCHOOL TENNIS', caption: 'GIRLS GETTING READY FOR HIGH SCHOOL TENNIS' },
+    { src: '/IMG_1595.jpeg', alt: 'GIRLS GETTING READY FOR HIGH SCHOOL TENNIS', caption: 'GIRLS GETTING READY FOR HIGH SCHOOL TENNIS' },
+    { src: '/IMG_1599.jpg', alt: 'GIRLS GETTING READY FOR HIGH SCHOOL TENNIS', caption: 'GIRLS GETTING READY FOR HIGH SCHOOL TENNIS' },
+    { src: '/IMG_8764.JPG', alt: 'GIRLS GETTING READY FOR HIGH SCHOOL TENNIS', caption: 'GIRLS GETTING READY FOR HIGH SCHOOL TENNIS' },
   ];
 
   const reviews = [
@@ -323,8 +323,8 @@ export default function HomeClient() {
                 <span className="inline-block bg-green-100 text-green-700 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-3">
                   Gallery
                 </span>
-                <h2 className="section-heading">Second-Generation Families</h2>
-                <p className="section-subheading">Second-generation players and families making memories at Gina's Tennis World</p>
+                <h2 className="section-heading">Junior Clinic & Girls Tennis</h2>
+                <p className="section-subheading">JUNIOR STUDENTS HAVING FUN AT GTW — Girls getting ready for high school tennis</p>
               </div>
               <div className="relative">
                 <div className="overflow-hidden rounded-2xl shadow-lg">
@@ -341,7 +341,7 @@ export default function HomeClient() {
                             className="w-full h-full object-cover"
                           />
                           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
-                            <p className="text-white font-semibold text-sm">{img.alt}</p>
+                            <p className="text-white font-semibold text-sm">{img.caption || img.alt}</p>
                           </div>
                         </div>
                       </div>
@@ -441,6 +441,74 @@ export default function HomeClient() {
                     />
                   ))}
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== GIRLS GETTING READY FOR HIGH SCHOOL TENNIS ===== */}
+      <section className="bg-white py-16 md:py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <span className="inline-block bg-green-100 text-green-700 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-3">
+              Junior Program
+            </span>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-green-900 mb-3">
+              GIRLS GETTING READY FOR HIGH SCHOOL TENNIS
+            </h2>
+            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+              Our junior program prepares young athletes for competitive high school tennis. These girls are building the skills, confidence, and competitive edge they need to succeed.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {[
+              { src: '/IMG_1241.jpeg', alt: 'Girls practicing at GTW' },
+              { src: '/IMG_1312.jpeg', alt: 'Junior girls on court' },
+              { src: '/IMG_1595.jpeg', alt: 'Girls tennis drills' },
+              { src: '/IMG_1599.jpg', alt: 'High school prep at GTW' },
+              { src: '/IMG_8764.JPG', alt: 'Girls getting ready for competition' },
+              { src: '/IMG_1171.jpeg', alt: 'Junior clinic at Gina\'s' },
+            ].map((img, idx) => (
+              <div key={idx} className="relative rounded-2xl overflow-hidden shadow-md group">
+                <div className="aspect-[4/3]">
+                  <img
+                    src={img.src}
+                    alt={img.alt}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ===== ANAYA — STUDENT & ASSISTANT TEACHER ===== */}
+      <section className="bg-green-50 py-16 md:py-20">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-3xl shadow-lg border border-green-100 overflow-hidden">
+            <div className="grid md:grid-cols-2 gap-0">
+              <div className="aspect-square md:aspect-auto bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center">
+                <div className="text-center">
+                  <Trophy className="w-20 h-20 text-green-400 mx-auto mb-3" />
+                  <p className="text-green-700 font-semibold text-lg">Anaya</p>
+                  <p className="text-green-600 text-sm">Governor Livingston</p>
+                </div>
+              </div>
+              <div className="p-8 md:p-10 flex flex-col justify-center">
+                <span className="inline-block bg-yellow-100 text-yellow-700 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-4 self-start">
+                  Student Spotlight
+                </span>
+                <h2 className="text-2xl md:text-3xl font-extrabold text-green-900 mb-4">
+                  ANAYA
+                </h2>
+                <p className="text-gray-700 text-lg leading-relaxed mb-4">
+                  Governor Livingston 1st Doubles Player — student and assistant teacher at GTW.
+                </p>
+                <p className="text-gray-600 leading-relaxed">
+                  Anaya represents the best of Gina's Tennis World: a competitive player who also gives back by helping the next generation learn the game she loves.
+                </p>
               </div>
             </div>
           </div>
@@ -659,7 +727,7 @@ export default function HomeClient() {
             <span className="inline-block bg-green-100 text-green-700 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-3">
               Our Team
             </span>
-            <h2 className="section-heading">Meet Our Staff</h2>
+            <h2 className="section-heading">Coaching Staff — Phil, Wendy, Gina, Gregg</h2>
             <p className="section-subheading max-w-2xl mx-auto">
               Our experienced instructors are passionate about helping you improve your game.
             </p>
