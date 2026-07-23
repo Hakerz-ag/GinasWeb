@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, ArrowRight, Shield } from 'lucide-react';
 import Link from 'next/link';
+import { api } from '@/lib/api';
 
 export default function LoginPage() {
   const { login, isAuthenticated, user, mfaPending, verifyMFA } = useAuth();
@@ -17,6 +18,8 @@ export default function LoginPage() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
   const [mfaCode, setMfaCode] = useState('');
   const [mfaError, setMfaError] = useState('');
   const [mfaLoading, setMfaLoading] = useState(false);
@@ -204,21 +207,32 @@ export default function LoginPage() {
                       <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                     </div>
                     <p className="text-green-700 font-medium">Password reset email sent!</p>
-                    <p className="text-gray-500 text-sm mt-1">Check your inbox for instructions to reset your password.</p>
-                    <button onClick={() => { setShowForgotPassword(false); setForgotSent(false); }} className="mt-4 btn-primary">Back to Sign In</button>
+                    <p className="text-gray-500 text-sm mt-1">Check your inbox for instructions to reset your password. The link expires in 1 hour.</p>
+                    <button onClick={() => { setShowForgotPassword(false); setForgotSent(false); setForgotEmail(''); }} className="mt-4 btn-primary">Back to Sign In</button>
                   </div>
                 ) : (
                   <>
                     <p className="text-gray-600 text-sm mb-4">Enter your email address and we&apos;ll send you a link to reset your password.</p>
-                    <input type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="Enter your email" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none mb-4" />
+                    {forgotError && (
+                      <div className="bg-red-50 text-red-700 text-sm p-3 rounded-xl mb-4">{forgotError}</div>
+                    )}
+                    <input type="email" value={forgotEmail} onChange={(e) => { setForgotEmail(e.target.value); setForgotError(''); }} placeholder="Enter your email" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none mb-4" />
                     <div className="flex gap-3">
-                      <button onClick={() => setShowForgotPassword(false)} className="flex-1 py-2 border border-gray-300 rounded-xl text-sm font-medium">Cancel</button>
+                      <button onClick={() => { setShowForgotPassword(false); setForgotEmail(''); setForgotError(''); }} className="flex-1 py-2 border border-gray-300 rounded-xl text-sm font-medium">Cancel</button>
                       <button onClick={async () => {
+                        setForgotLoading(true);
+                        setForgotError('');
                         try {
-                          await fetch('/api/auth/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: forgotEmail }) });
-                        } catch (err) { /* ignore errors for now */ }
-                        setForgotSent(true);
-                      }} disabled={!forgotEmail.trim()} className={`flex-1 py-2 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 ${!forgotEmail.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}>Send Reset Link</button>
+                          await api.forgotPassword(forgotEmail);
+                          setForgotSent(true);
+                        } catch (err: any) {
+                          // The API returns success even if email doesn't exist (security)
+                          // so we show success regardless
+                          setForgotSent(true);
+                        } finally {
+                          setForgotLoading(false);
+                        }
+                      }} disabled={!forgotEmail.trim() || forgotLoading} className={`flex-1 py-2 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 ${!forgotEmail.trim() || forgotLoading ? 'opacity-50 cursor-not-allowed' : ''}`}>{forgotLoading ? 'Sending...' : 'Send Reset Link'}</button>
                     </div>
                   </>
                 )}

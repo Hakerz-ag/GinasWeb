@@ -221,13 +221,29 @@ def forgot_password(request: Request, body: PasswordResetRequest, db: Session = 
             to_email=user.email,
             subject="Reset Your Password — Gina's Tennis World",
             html_content=f"""
-            <h2>Password Reset Request</h2>
-            <p>Hi {user.name},</p>
-            <p>We received a request to reset your password. Click the link below to set a new password:</p>
-            <p><a href="{reset_url}" style="background-color: #16a34a; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">Reset Password</a></p>
-            <p>This link expires in 1 hour.</p>
-            <p>If you didn't request this, you can safely ignore this email.</p>
-            <p>— Gina's Tennis World</p>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #166534, #15803d); padding: 20px 30px; border-radius: 12px 12px 0 0;">
+                    <h1 style="color: #facc15; margin: 0; font-size: 24px;">🔑 Reset Your Password</h1>
+                    <p style="color: #bbf7d0; margin: 5px 0 0 0; font-size: 14px;">Gina's Tennis World</p>
+                </div>
+                <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+                    <p style="color: #374151;">Hi {user.name},</p>
+                    <p style="color: #374151;">We received a request to reset your password. Click the button below to set a new password:</p>
+                    <div style="text-align: center; margin: 24px 0;">
+                        <a href="{reset_url}" style="background-color: #16a34a; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; display: inline-block; font-weight: bold; font-size: 16px;">Reset Password</a>
+                    </div>
+                    <p style="color: #6b7280; font-size: 14px;">Or copy and paste this link into your browser:</p>
+                    <p style="color: #15803d; font-size: 13px; word-break: break-all;"><a href="{reset_url}" style="color: #15803d;">{reset_url}</a></p>
+                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+                    <p style="color: #6b7280; font-size: 13px;">⏰ This link expires in <strong>1 hour</strong>.</p>
+                    <p style="color: #6b7280; font-size: 13px;">If you didn't request this, you can safely ignore this email. Your password will remain unchanged.</p>
+                </div>
+                <div style="background: #f0fdf4; padding: 15px 30px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none;">
+                    <p style="color: #6b7280; font-size: 12px; margin: 0;">
+                        This password reset link was requested from Gina's Tennis World website.
+                    </p>
+                </div>
+            </div>
             """,
         )
     except Exception:
