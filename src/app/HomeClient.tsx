@@ -40,41 +40,47 @@ export default function HomeClient() {
     { src: '/IMG_8764.JPG', alt: 'GIRLS GETTING READY FOR HIGH SCHOOL TENNIS', caption: 'GIRLS GETTING READY FOR HIGH SCHOOL TENNIS' },
   ];
 
+  const ginaQuote = {
+    text: "After being in business for 43 years in Berkeley Heights I am so excited to have the opportunity to have more kids and adults learning to love the game of tennis. I still enjoy teaching even more then I did in 1983.",
+    name: 'Gina',
+    role: 'Owner & Head Coach',
+  };
+
   const reviews = [
     {
-      name: 'Sarah M.',
-      role: 'Parent & Junior Student',
-      text: 'Gina\'s Tennis World has completely transformed my daughter\'s game — and mine too! We both take lessons here. The coaches are patient, knowledgeable, and truly care about every student\'s progress. She went from a complete beginner to playing competitive matches in just one season!',
+      name: 'Logan',
+      role: 'Student',
+      text: 'I found Gina\'s Tennis World and signed up for a clinic expecting it to be like any other tennis clinic I had attended. Instead, it turned out to be something truly special. Thanks to the guidance, encouragement, and dedication of Coach Gina and Coach Phil, I\'ve improved tremendously as a player and grown more confident on the court. Looking back, joining Gina\'s Tennis World was one of the best decisions I\'ve made for my tennis journey.',
       image: '/IMG_0566.jpeg',
     },
     {
-      name: 'David R.',
-      role: 'Parent & Junior Student',
-      text: 'My daughter and I both take lessons at Gina\'s. She\'s been in the junior clinics for two years and absolutely loves it, and I joined the adult clinic last season. The coaches make learning fun while still pushing us to improve. Best tennis program in the area!',
+      name: 'Tanvi',
+      role: 'Student',
+      text: 'It was really good because we were able to get individual time with Gina so she could correct something right then and there. If my backhand needed work, she could fix it immediately, and I could use the new technique right away. I also got time with Coach Phil, so even though it wasn\'t a private lesson, I felt like every single time I went to a clinic I learned a new technique to improve my game.',
       image: '/IMG_0651.jpeg',
     },
     {
-      name: 'Maria L.',
-      role: 'Parent & Junior Student',
-      text: 'The indoor courts are always in great condition. My son and I both play here — he\'s in the junior program and I rent court time every week. The 30-week contract gives us a guaranteed spot. It\'s our family\'s go-to for tennis year-round.',
+      name: 'Tanvi',
+      role: 'Student',
+      text: 'Gina\'s Tennis World gave me a lot of confidence, especially when playing points and doubles. Working on volleys and being aggressive at the net really helped me during my high school career. Making it to the state doubles tournament was probably because Gina helped me become so comfortable at the net. She also tailored instruction to whether you played singles or doubles, making sure you were learning the strategies you needed to succeed.',
       image: '/IMG_1156.jpeg',
     },
     {
-      name: 'Tom K.',
-      role: 'Parent & Junior Student',
-      text: 'Wendy\'s intermediate clinics are fantastic for adults, and my kids love the junior program. She breaks down strategy in a way that finally clicked for me. Both generations are improving — that\'s what makes Gina\'s special.',
+      name: 'Anthony',
+      role: 'Student',
+      text: 'Gina has helped me become a great player and is helping me be on the way to becoming an amazing one. Gina\'s Tennis World has helped me love the game of tennis while learning how to play well, have fun and make new friends to play with.',
       image: '/IMG_1171.jpeg',
     },
     {
-      name: 'Jennifer P.',
-      role: 'Parent & Junior Student',
-      text: 'Phil makes every lesson fun for the kids. My son used to dread sports activities, but now he counts down the days until tennis class. I started taking adult lessons too — we practice together at home now. The junior program here is truly special.',
+      name: 'Julia',
+      role: 'Student',
+      text: 'Gina has always come up with innovative lesson plans that set her apart from the competition. She\'s old school in her technique — she still believes in players having a strong net game, and she does not run the same rote drills week to week. That\'s what makes her stand out. Gina and Wendy care about you as a person, not just as a player. They ask about you outside of tennis, and this knowledge has let Gina adapt her teaching style to how her players learn.',
       image: '/IMG_1241.jpeg',
     },
     {
-      name: 'Mike H.',
-      role: 'Parent & Junior Student',
-      text: 'I was nervous to start tennis in my 40s, but the beginner clinic was so welcoming. No judgment, great instruction, and I met some wonderful people. My daughter joined the junior program after seeing how much fun I was having — now we both play!',
+      name: 'Julia',
+      role: 'Student',
+      text: 'Gina\'s Tennis World has always been community-focused, where everyone feels like family. It\'s not an ultra competitive, toxic, or intimidating culture, and it\'s a safe place to learn. Of course, we all still care about winning, but having fun is just as, if not more, important. In the youth clinics, every child wants to be there. Gina will still be the face of the club and teaching a majority of the clinics. This new chapter will let her share her gift with even more people, and I\'m truly so excited for her. Gina, you\'re doing awesome things!',
       image: '/IMG_1312.jpeg',
     },
   ];
@@ -210,6 +216,25 @@ export default function HomeClient() {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== GINA'S QUOTE ===== */}
+      <section className="bg-gradient-to-r from-green-800 to-green-900 py-12 md:py-16">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="text-5xl text-yellow-400 mb-4">&ldquo;</div>
+          <blockquote className="text-xl md:text-2xl text-white font-medium leading-relaxed mb-6">
+            {ginaQuote.text}
+          </blockquote>
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-yellow-400">
+              <img src="/gina.png" alt="Gina" className="w-full h-full object-cover" />
+            </div>
+            <div className="text-left">
+              <p className="text-yellow-400 font-bold">{ginaQuote.name}</p>
+              <p className="text-green-200 text-sm">{ginaQuote.role}</p>
             </div>
           </div>
         </div>
@@ -380,8 +405,8 @@ export default function HomeClient() {
                 <span className="inline-block bg-yellow-100 text-yellow-700 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-3">
                   Reviews
                 </span>
-                <h2 className="section-heading">Families Love Gina's</h2>
-                <p className="section-subheading">Parents and their kids — both taught by Gina</p>
+                <h2 className="section-heading">What Our Students Say</h2>
+                <p className="section-subheading">Real stories from Logan, Tanvi, Anthony, Julia and more</p>
               </div>
               <div className="relative">
                 <div className="overflow-hidden rounded-2xl">

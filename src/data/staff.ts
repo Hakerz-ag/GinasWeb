@@ -50,6 +50,8 @@ export const clubInfo = {
   social: {
     facebook: 'https://www.facebook.com/Ginas-Tennis-World-171311616218044/',
     youtube: 'https://www.youtube.com/channel/UCvqyp7DVOLqAAbHzKkx6Z0Q',
+    instagram: 'https://www.instagram.com/ginastennisworld',
+    tiktok: 'https://www.tiktok.com/@ginastennisworld',
   },
   features: [
     'Indoor courts — play year-round',

@@ -108,14 +108,34 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 bg-green-800 hover:bg-yellow-500 hover:text-green-900 text-green-200 rounded-full flex items-center justify-center transition-colors text-sm font-bold"
+                aria-label="Facebook"
               >
                 f
+              </a>
+              <a
+                href={clubInfo.social.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 bg-green-800 hover:bg-yellow-500 hover:text-green-900 text-green-200 rounded-full flex items-center justify-center transition-colors text-sm font-bold"
+                aria-label="Instagram"
+              >
+                IG
+              </a>
+              <a
+                href={clubInfo.social.tiktok}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 bg-green-800 hover:bg-yellow-500 hover:text-green-900 text-green-200 rounded-full flex items-center justify-center transition-colors text-sm font-bold"
+                aria-label="TikTok"
+              >
+                TT
               </a>
               <a
                 href={clubInfo.social.youtube}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 bg-green-800 hover:bg-yellow-500 hover:text-green-900 text-green-200 rounded-full flex items-center justify-center transition-colors text-sm font-bold"
+                aria-label="YouTube"
               >
                 ▶
               </a>
