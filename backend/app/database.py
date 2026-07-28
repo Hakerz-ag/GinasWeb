@@ -186,3 +186,50 @@ def init_db():
                         logging.warning(f'Could not create index {index_name}: {e}')
     except Exception as e:
         logging.warning(f'Auto-migration failed (non-critical for new databases): {e}')
+
+
+def encrypt_birth_dates() -> None:
+    """Encrypt any plaintext birth_date values in users and sub_accounts.
+
+    Called at startup after init_db(). Idempotent — already-encrypted values
+    (Fernet tokens starting with 'gAAAAA') are skipped. No-op if ENCRYPTION_KEY
+    is not set (plaintext dev mode), but logs a critical warning in production.
+    """
+    from app.config import get_settings
+    from app.services.encryption import encrypt, is_encrypted
+
+    cfg = get_settings()
+    if not cfg.encryption_key:
+        if cfg.is_production:
+            logging.critical(
+                "ENCRYPTION_KEY not set in production — birth_date PII stored as plaintext. "
+                "Generate a key and set it in Render dashboard immediately."
+            )
+        return
+
+    try:
+        with engine.connect() as conn:
+            for table in ("users", "sub_accounts"):
+                rows = conn.execute(
+                    text(
+                        f"SELECT id, birth_date FROM {table} "
+                        "WHERE birth_date IS NOT NULL AND birth_date != ''"
+                    )
+                ).fetchall()
+
+                count = 0
+                for row_id, birth_date in rows:
+                    if is_encrypted(birth_date):
+                        continue
+                    encrypted_val = encrypt(birth_date)
+                    conn.execute(
+                        text(f"UPDATE {table} SET birth_date = :enc WHERE id = :id"),
+                        {"enc": encrypted_val, "id": row_id},
+                    )
+                    count += 1
+
+                conn.commit()
+                if count:
+                    logging.info(f"[startup] Encrypted {count} plaintext birth_date value(s) in {table}")
+    except Exception as exc:
+        logging.error(f"[startup] birth_date encryption failed: {exc}")
