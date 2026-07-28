@@ -8,6 +8,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
+from app.services.encryption import EncryptedString
 
 
 def _generate_id(prefix: str) -> str:
@@ -26,7 +27,7 @@ class User(Base):
     name = Column(String, nullable=False)
     role = Column(String, nullable=False, default="customer")  # "admin" or "customer"
     phone = Column(String, default="")
-    birth_date = Column(String, default="")  # "YYYY-MM-DD"
+    birth_date = Column(EncryptedString, default="")  # "YYYY-MM-DD" — encrypted at rest
     skill_level = Column(String, default="none")  # "none", "beginner", "intermediate", "advanced"
     assessment_completed = Column(Boolean, default=False)  # must complete 1-on-1 before classes
     sessions_taken = Column(Integer, default=0)  # total sessions completed
@@ -50,7 +51,7 @@ class SubAccount(Base):
     id = Column(String, primary_key=True, default=lambda: _generate_id("sub"))
     parent_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
-    birth_date = Column(String, default="")  # "YYYY-MM-DD"
+    birth_date = Column(EncryptedString, default="")  # "YYYY-MM-DD" — encrypted at rest
     phone = Column(String, default="")
     email = Column(String, default="")
     relationship_type = Column("relationship", String, default="child")  # "child", "spouse", "other"

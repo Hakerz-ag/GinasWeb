@@ -13,6 +13,7 @@ from app.schemas import (
 )
 from app.services.email_service import send_enrollment_email
 from app.services.auth_middleware import require_admin
+from app.services.cache import cache_get, cache_set, cache_delete_pattern
 from fastapi import Body
 
 router = APIRouter()
@@ -58,6 +59,11 @@ def _is_expired(cls: ClassSession) -> bool:
 @router.get("", response_model=list[ClassOut])
 def list_classes(level: str = None, type: str = None, season: str = None, db: Session = Depends(get_db)):
     """List all active classes (expired ones are filtered out), optionally filter by level, type, or season."""
+    cache_key = f"classes:{level or '*'}:{type or '*'}:{season or '*'}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     query = db.query(ClassSession)
     if level:
         query = query.filter(ClassSession.level == level)
@@ -66,9 +72,12 @@ def list_classes(level: str = None, type: str = None, season: str = None, db: Se
     if season:
         query = query.filter(ClassSession.season == season)
     all_classes = query.all()
-    # Filter out expired classes
     active = [c for c in all_classes if not _is_expired(c)]
-    return [_class_to_out(c) for c in active]
+    result = [_class_to_out(c) for c in active]
+
+    # Cache for 5 minutes — invalidated on any class write
+    cache_set(cache_key, [r.model_dump() for r in result], ttl=300)
+    return result
 
 
 @router.get("/{class_id}", response_model=ClassOut)
@@ -103,6 +112,7 @@ def create_class(body: ClassCreate, db: Session = Depends(get_db)):
     db.add(cls)
     db.commit()
     db.refresh(cls)
+    cache_delete_pattern("classes:*")
     return _class_to_out(cls)
 
 
@@ -118,6 +128,7 @@ def update_class(class_id: str, body: ClassUpdate, db: Session = Depends(get_db)
 
     db.commit()
     db.refresh(cls)
+    cache_delete_pattern("classes:*")
     return _class_to_out(cls)
 
 
@@ -129,6 +140,7 @@ def delete_class(class_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Class not found")
     db.delete(cls)
     db.commit()
+    cache_delete_pattern("classes:*")
     return MessageResponse(message="Class deleted")
 
 

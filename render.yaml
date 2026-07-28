@@ -26,7 +26,15 @@ services:
       - key: GMAIL_USER
         value: ginastennisworld@gmail.com
       - key: GMAIL_APP_PASSWORD
-        value: zjmdhdyyzeynfbbw
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: JWT_SECRET_PREV
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
       - key: CONTACT_EMAIL
         value: ginastennisworld@gmail.com
       - key: EMAIL_FROM_ADDRESS

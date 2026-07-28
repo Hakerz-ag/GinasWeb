@@ -78,6 +78,16 @@ class Settings(BaseSettings):
     # Frontend URL (for CORS and email links)
     frontend_url: str = "http://localhost:3000"
 
+    # Sentry error tracking
+    sentry_dsn: str = ""  # Set SENTRY_DSN env var in production
+
+    # Encryption key for PII fields (birth_date)
+    # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    encryption_key: str = ""  # Set ENCRYPTION_KEY env var in production
+
+    # Redis / Upstash (optional caching)
+    redis_url: str = ""  # Set REDIS_URL env var — e.g. rediss://...@...upstash.io:6379
+
     # Environment
     environment: str = "development"  # "development", "staging", "production"
 
