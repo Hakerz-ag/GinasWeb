@@ -4,8 +4,9 @@ Usage in models:
     from app.services.encryption import EncryptedString
     birth_date = Column(EncryptedString, default="")
 
-Requires ENCRYPTION_KEY env var in production. Falls back to plaintext
-in development (no key set), so local dev works without configuration.
+Requires ENCRYPTION_KEY env var in production. In development (no key set)
+values are stored as plaintext so local dev works without configuration.
+Set ENCRYPTION_KEY with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 """
 
 import logging
@@ -23,10 +24,16 @@ def _get_fernet():
         return _fernet
     try:
         from app.config import get_settings
-        key = get_settings().encryption_key
+        settings = get_settings()
+        key = settings.encryption_key
         if not key:
             if not _key_missing_warned:
-                logger.warning("ENCRYPTION_KEY not set — birth_date stored as plaintext. Set in production.")
+                if settings.is_production:
+                    logger.critical(
+                        "ENCRYPTION_KEY not set in production — birth_date stored as plaintext. Set immediately."
+                    )
+                else:
+                    logger.warning("ENCRYPTION_KEY not set — birth_date stored as plaintext (dev mode).")
                 _key_missing_warned = True
             return None
         from cryptography.fernet import Fernet
@@ -37,8 +44,13 @@ def _get_fernet():
         return None
 
 
+def is_encrypted(value: str) -> bool:
+    """Fernet tokens start with 'gAAAAA' (base64 of 0x80 version prefix)."""
+    return value.startswith("gAAAAA")
+
+
 def encrypt(value: str) -> str:
-    """Encrypt a string. Returns plaintext if no key configured."""
+    """Encrypt a string. Returns plaintext only when no key configured (dev mode)."""
     if not value:
         return value
     f = _get_fernet()
@@ -48,7 +60,9 @@ def encrypt(value: str) -> str:
 
 
 def decrypt(value: str) -> str:
-    """Decrypt a string. Returns value as-is if decryption fails (plaintext fallback)."""
+    """Decrypt a string. Returns value as-is for legacy plaintext.
+    Logs a warning when a value looks encrypted but fails — indicates a wrong key.
+    """
     if not value:
         return value
     f = _get_fernet()
@@ -57,7 +71,14 @@ def decrypt(value: str) -> str:
     try:
         return f.decrypt(value.encode()).decode()
     except Exception:
-        # Value is plaintext (pre-encryption data) — return as-is
+        if is_encrypted(value):
+            # Value looks like a Fernet token but decryption failed — almost always a wrong/rotated key
+            logger.warning(
+                "Decryption failed for a value that appears encrypted (starts with gAAAAA). "
+                "Check that ENCRYPTION_KEY matches the key used to encrypt this data. "
+                "Returning raw ciphertext — user will see garbled output."
+            )
+        # Legacy plaintext value — return as-is
         return value
 
 

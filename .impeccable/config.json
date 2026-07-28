@@ -1,0 +1,9 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [
+      "/Users/karthik/Documents/Projects/TechSprint/gina-tennis-world/status-report.html"
+    ],
+    "ignoreValues": []
+  }
+}

@@ -83,12 +83,20 @@ def cache_delete(key: str) -> None:
 
 
 def cache_delete_pattern(pattern: str) -> None:
-    """Delete all keys matching a glob pattern. No-op if Redis unavailable."""
+    """Delete all keys matching a glob pattern. No-op if Redis unavailable.
+    Uses SCAN to avoid blocking the Redis server (KEYS is O(N) blocking).
+    """
     r = _get_redis()
     if r is None:
         return
     try:
-        keys = r.keys(pattern)
+        keys = []
+        cursor = 0
+        while True:
+            cursor, batch = r.scan(cursor, match=pattern, count=100)
+            keys.extend(batch)
+            if cursor == 0:
+                break
         if keys:
             r.delete(*keys)
     except Exception as exc:

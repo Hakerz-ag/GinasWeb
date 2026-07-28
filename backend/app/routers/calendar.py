@@ -73,6 +73,9 @@ def get_calendar(year: int = 2026, month: int = 6, db: Session = Depends(get_db)
                 price=c.price, description=c.description,
             )
             for c in classes_by_day.get(day_name, [])
+            # Only show class if this date falls within its active date range
+            if (not c.start_date or c.start_date <= date_str)
+            and (not c.end_date or c.end_date >= date_str)
         ]
 
         day_bookings = [

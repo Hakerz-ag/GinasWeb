@@ -15,7 +15,7 @@ from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import get_settings
-from app.database import SessionLocal, init_db
+from app.database import SessionLocal, init_db, encrypt_birth_dates
 from app.services.seed import seed_db
 from app.routers import auth, users, bookings, classes, calendar, email, opentimes, assessments, scheduleblocks, chatmessages
 from app.routers import notifications, payments, dashboard, realtime, contact, mfa
@@ -25,10 +25,10 @@ from app.routers import contract_schedule
 settings = get_settings()
 
 # ── Sentry error tracking ──────────────────────────────────────────────────
-if os.getenv("SENTRY_DSN"):
+if settings.sentry_dsn:
     import sentry_sdk
     sentry_sdk.init(
-        dsn=os.getenv("SENTRY_DSN"),
+        dsn=settings.sentry_dsn,
         environment=settings.environment,
         traces_sample_rate=0.1,
     )
@@ -71,9 +71,10 @@ limiter = Limiter(key_func=_get_real_ip)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Startup: create tables and seed demo data."""
+    """Startup: create tables, encrypt PII, seed demo data."""
     logging.info("Starting Gina's Tennis World API...")
     init_db()
+    encrypt_birth_dates()  # idempotent — encrypts any plaintext birth_date values
     db = SessionLocal()
     try:
         seed_db(db)
